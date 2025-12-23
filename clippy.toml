@@ -1,0 +1,40 @@
+max-fn-params-bools = 1
+max-include-file-size = 1000000
+too-many-lines-threshold = 100
+
+# https://rust-lang.github.io/rust-clippy/master/index.html#disallowed_macros
+disallowed-macros = [
+    'std::dbg',
+    'std::unimplemented',
+
+    'std::eprint',
+    'std::eprintln',
+    'std::print',
+    'std::println',
+]
+
+# https://rust-lang.github.io/rust-clippy/master/index.html#disallowed_methods
+disallowed-methods = []
+
+# https://rust-lang.github.io/rust-clippy/master/index.html#disallowed_names
+disallowed-names = []
+
+# https://rust-lang.github.io/rust-clippy/master/index.html#disallowed_types
+disallowed-types = []
+
+# Allow-list of words for markdown in docstrings
+# https://rust-lang.github.io/rust-clippy/master/index.html#doc_markdown
+doc-valid-idents = [
+    "..",
+]
+
+# Characters which are allowed to be a one-character ident name (like variables named
+# `n`, `i`, or `x`).
+# https://rust-lang.github.io/rust-clippy/master/index.html#min_ident_chars
+allowed-idents-below-min-chars = [
+    # Default variable name in `Debug` and `Display` impls, and common name for callbacks.
+    "f",
+    # `t: T` is the most sensible identifier a lot of times
+    "t",
+    "..",
+]
