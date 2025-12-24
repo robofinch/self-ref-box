@@ -1,25 +1,24 @@
-[package]
-name         = "self-ref-box"
-authors      = ["Finley Huggins"]
-description  = "mutable or immutable self-references to boxed backing data of any lifetime"
-readme       = "README.md"
-keywords     = ["self-referential", "lifetime", "reference"]
-categories   = ["memory-management", "data-structures", "no-std"]
-include      = ["Cargo.toml", "src/**/*.rs", "LICENSE-APACHE", "LICENSE-MIT", "README.md"]
-version      = "0.1.0"
+[workspace]
+resolver = "3"
+members = [
+    "crates/self-ref-box",
+    "crates/variance-family"
+]
+
+[workspace.package]
 edition      = "2024"
 rust-version = "1.85"
 repository   = "https://github.com/robofinch/self-ref-box"
 license      = "MIT OR Apache-2.0"
 
-
-[dependencies]
-
+[workspace.dependencies]
+self-ref-box    = { version = "0.1.0", path = "crates/self-ref-box"    }
+variance-family = { version = "0.1.0", path = "crates/variance-family" }
 
 
 # Out of the lints that do anything (non-deprecated clippy lints, non-migration rust lints),
 # AFAICT there are 34 left at the "allow" level :)
-[lints.rust]
+[workspace.lints.rust]
 # Note: I basically went through every allow-by-default lint, and am linting against
 # almost everything, except lints just related to migrating to Edition 2018, 2021, or 2024;
 # since this codebase is in Edition 2024, those lints don't have any use here.
@@ -65,7 +64,7 @@ unused_lifetimes                     = "warn"
 unused_macro_rules                   = "warn"
 unused_qualifications                = "warn"
 variant_size_differences             = "warn"
-missing_docs                         = "warn"
+# missing_docs                         = "warn" # TODO: enable
 
 future_incompatible                  = { level = "warn", priority = -1 }
 keyword-idents                       = { level = "warn", priority = -1 }
@@ -86,7 +85,7 @@ nonstandard_style                    = { level = "warn", priority = -1 }
 # Note that `multiple_supertrait_upcastable` is left as allow.
 
 
-[lints.clippy]
+[workspace.lints.clippy]
 # Note: the strategy here, unlike with rust lints, is to just enable everything, and carve out
 # exceptions as needed.
 # See clippy.toml as well.
@@ -187,8 +186,5 @@ option_if_let_else                  = "allow"
 significant_drop_tightening         = "allow"
 
 
-[lints.rustdoc]
+[workspace.lints.rustdoc]
 all = { level = "warn", priority = -1 }
-
-[package.metadata.docs.rs]
-all-features = true

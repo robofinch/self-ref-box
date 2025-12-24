@@ -1,0 +1,23 @@
+[package]
+name         = "self-ref-box"
+authors      = ["Finley Huggins"]
+description  = "mutable or immutable self-references to boxed backing data of any lifetime"
+readme       = "README.md"
+keywords     = ["self-referential", "lifetime", "reference"]
+categories   = ["memory-management", "data-structures", "no-std"]
+include      = ["Cargo.toml", "src/**/*.rs", "LICENSE-APACHE", "LICENSE-MIT", "README.md"]
+version      = "0.1.0"
+edition      .workspace = true
+rust-version .workspace = true
+repository   .workspace = true
+license      .workspace = true
+
+[lints]
+workspace = true
+
+[package.metadata.docs.rs]
+all-features = true
+
+
+[dependencies]
+

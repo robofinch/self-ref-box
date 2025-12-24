@@ -1,10 +1,15 @@
-<div align="center" class="rustdoc-hidden">
-<h1> Self-Ref Box </h1>
-</div>
+# Self-Ref Box
 
 [<img alt="github" src="https://img.shields.io/badge/github-self--ref--box-08f?logo=github" height="20">](https://github.com/robofinch/self-ref-box/)
 [![Latest version](https://img.shields.io/crates/v/self-ref-box.svg)](https://crates.io/crates/self-ref-box)
 [![Documentation](https://img.shields.io/docsrs/self-ref-box)](https://docs.rs/self-ref-box/0)
+[![Apache 2.0 or MIT license.](https://img.shields.io/badge/license-Apache--2.0_OR_MIT-blue.svg)](#license)
+
+# Variance Family
+
+[<img alt="github" src="https://img.shields.io/badge/github-variance--family-08f?logo=github" height="20">](https://github.com/robofinch/variance-family/)
+[![Latest version](https://img.shields.io/crates/v/variance-family.svg)](https://crates.io/crates/variance-family)
+[![Documentation](https://img.shields.io/docsrs/variance-family)](https://docs.rs/variance-family/0)
 [![Apache 2.0 or MIT license.](https://img.shields.io/badge/license-Apache--2.0_OR_MIT-blue.svg)](#license)
 
 # Overview
@@ -30,62 +35,8 @@ enum SelfRefSlot<S, E> {
 The type is designed for the self-reference to be frequently changed out and/or mutated, with
 access to the backing data provided to the greatest extent that is sound.
 
-If you need a self-referential struct where only shared/immutable references to the backing data
-is required, I recommend considering [`yoke`].
+See the [`self-ref-box` `README`](crates/self-ref-box/README.md) for more details.
 
-# Limitations
-
-To soundly allow self-references as described, some limitations are necessary.
-- The self-references produced from a `&'a (mut) T` are required to be covariant in `'a`. In
-  particular, they must not be able to mutate a `&'a (mut) T` reference or contain functions with
-  `&'a (mut) T` arguments. Examples of permissible types include any `T` not using `'a` at all
-  (a trivial self-reference not actually referencing the backing data), `&'a Foo`, `Cow<'a, Bar>`,
-  `&'a &'a mut Baz`, `&'a Cell<Qux>`, and `[&'a Quux; N]`. Among types prohibited from being
-  self-references are `Cell<&'a Foo>`, `&'a mut Cow<'a, Bar>`, and `fn(&'a Baz)`. See
-  [the Rustonomicon's page on variance] for full details.
-
-  This crate needs to ensure that a self-reference read multiple times with different lifetimes is
-  always exposed to your code with a lifetime valid for that value. Upholding this requirement is
-  not feasible for types that are invariant or contravariant in the relevant lifetime, except by
-  using `unsafe` functions whose safety invariants place the burden on you to not misuse the
-  returned values. This crate should reduce the scope and amount of `unsafe` you need to write,
-  so invariant and contravariant types are simply prohibited.
-
-- `SelfRefBox` is invariant over `T`, `S`, and `E`. Given that its self references can access
-  `&mut T` rather than simply `&T`, invariance over `T` is inevitable with this design.
-  Additionally, `SelfRefBox` uses fairly complicated unsafe trait bounds on `S` and `E`, so they
-  are kept invariant out of an abundance of caution. (TODO: is them being covariant even an option?)
-- Information about the layouts of `S` and `E` is necessary to lifetime-erase them, and the
-  non-lifetime-erased self-references need to be proven to be convariant. Both requirements
-  necessitate custom trait bounds.
-
-Additionally, the backing data is stored in a box allocation, rather than an arbitrary type with
-a [stable deref] impl that permits mutable aliasing; this is mostly for simplicity. Please reach
-out on the Rust users forum or open an issue if this is inconvenient. For my part, I'm willing to
-accept the slight cost of using the heap with the global allocator.
-
-## Trade-offs compared to `yoke`
-TODO (should probably wait until I've written the code)
-
-## Trade-offs compared to `ouroboros`
-TODO (should probably wait until I've written the code)
-
-# License
-
-Licensed under either of
-
-* Apache License, Version 2.0 ([LICENSE-APACHE][])
-* MIT license ([LICENSE-MIT][])
-
-at your option.
-
-Unless you explicitly state otherwise, any contribution intentionally submitted for inclusion in
-this crate by you, as defined in the Apache-2.0 license, shall be dual licensed as above, without
-any additional terms or conditions.
-
-[LICENSE-APACHE]: LICENSE-APACHE
-[LICENSE-MIT]: LICENSE-MIT
-
-[`yoke`]: https://lib.rs/crates/yoke
-[the Rustonomicon's page on variance]: https://doc.rust-lang.org/nomicon/subtyping.html
-[stable deref]: https://docs.rs/stable_deref_trait/1/stable_deref_trait/trait.StableDeref.html
+The [`variance-family` crate](crates/variance-family/README.md) was created to support this type,
+and may be more broadly useful for requiring that a lifetime is covariant, contravariant, or
+entirely unused in a family of types parameterized by a lifetime.
