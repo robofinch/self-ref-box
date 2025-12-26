@@ -21,3 +21,7 @@ all-features = true
 
 [dependencies]
 
+[features]
+default = ["std"]
+std     = ["alloc"]
+alloc   = []
