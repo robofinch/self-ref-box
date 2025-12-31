@@ -17,7 +17,7 @@ variance-family = { version = "0.1.0", path = "crates/variance-family" }
 
 
 # Out of the lints that do anything (non-deprecated clippy lints, non-migration rust lints),
-# AFAICT there are 34 left at the "allow" level :)
+# AFAICT there are 35 left at the "allow" level :)
 [workspace.lints.rust]
 # Note: I basically went through every allow-by-default lint, and am linting against
 # almost everything, except lints just related to migrating to Edition 2018, 2021, or 2024;

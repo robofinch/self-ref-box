@@ -1,3 +1,36 @@
+/// Create a ZST which is invariant over one or more generic parameters.
+///
+/// Attributes (such as doc comments) may be placed on the struct. The struct may have any
+/// visibility (e.g. `pub` or the default private visibility) or name. No bounds on the generic
+/// parameters are supported other than optional `: ?Sized` bounds. Defaults for the generic
+/// parameters are not supported.
+///
+/// The created ZST wraps [`PhantomData`](::core::marker::PhantomData) and implements a
+/// variety of traits.
+///
+/// # Example
+/// ```
+/// use variance_family::invariant_zst;
+///
+/// invariant_zst!(
+///     /// `Foo` is invariant over `T` and `U`.
+///     ///
+///     /// It unconditionally implements `Clone`, `Copy`, `Debug`, `Default`, `Eq`, `Hash`,
+///     /// `Ord`, `PartialEq`, `PartialOrd`, `Send`, `Sync`, `Unpin`, etc.
+///     ///
+///     /// (Well, "unconditionally" as in "when the struct is well-formed", which requires
+///     /// `U: Sized` in this case.)
+///     // Show that a random attribute works
+///     #[repr(align(64))]
+///     pub(crate) struct Foo<T: ?Sized, U>;
+/// );
+///
+/// impl<T: ?Sized, U> Foo<T, U> {
+///     pub(crate) const fn new() -> Self {
+///         Self(::core::marker::PhantomData)
+///     }
+/// }
+/// ```
 #[macro_export]
 macro_rules! invariant_zst {
     (
@@ -7,7 +40,7 @@ macro_rules! invariant_zst {
         // `fn` is a keyword, so there's no need for a `::core::primitive::` prefix or similar.
         $(#[$meta])*
         $vis struct $name<$($T $(: ?$sized)?),+>(
-            ::core::marker::PhantomData<$(fn($T) -> $T),+>,
+            ::core::marker::PhantomData<fn(($(*mut $T,)+))>,
         );
 
         impl<$($T $(: ?$sized)?),+> ::core::clone::Clone for $name<$($T),+> {

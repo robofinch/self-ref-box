@@ -1,19 +1,22 @@
 use core::mem::transmute;
 
-use crate::traits::{ContravariantFamily, CovariantFamily, LifetimeFamily, Varying, WithLifetime};
+use crate::traits::{ContravariantFamily, CovariantFamily, Varying, WithLifetime};
 
 
-// Note: in below safety comments, "is covariant in" or "is contravariant in" means, more
-// precisely, "can be covariantly casted in" or "can be contravariantly casted in".
+// Note: in below safety comments, "is covariant over" or "is contravariant over" means, more
+// precisely, "is sound to covariantly (or contravariantly) cast with respect to". That is,
+// manually-proven variance (and manually-proven soundness of casts) is the relevant concern,
+// not compiler-assigned variance (and compiler-proven soundness of casts).
 
 // ================================================================
-//  fn(T1, .., Tn) -> R
+//  fn(T1, .., Tn) -> R    (for argument arities 0..=12)
 // ================================================================
 
 // Safety summary:
-// - `'varying` is covariant in `fn(T1<'varying, .., Tn<'varying>) -> R<'varying>` if it's
-//   contravariant in each `Ti<'varying>` and is covariant in `R<'varying>`.
-// - It's contravariant if it's covariant in each `Ti<'varying>` and contravariant in `R<'varying>`.
+// - `fn(T1<'varying, .., Tn<'varying>) -> R<'varying>` is covariant over `'varying` if each
+//   `Ti<'varying>` is contravariant over `'varying` and `R<'varying>` is covariant over `'varying`.
+// - `fn(T1<'varying, .., Tn<'varying>) -> R<'varying>` is contravariant over `'varying` if each
+//   `Ti<'varying>` is covariant over `'varying` and `R<'varying>` is contravariant over `'varying`.
 
 // NOTE: for soundness, this macro should not be exported, even just within this crate.
 // It assumes that it is used with *this* crate's traits in scope (with the normal names).
@@ -31,24 +34,15 @@ macro_rules! fn_family {
             type Is = fn($($Ti::Is),*) -> $R::Is;
         }
 
-        impl<'lower, 'upper, $($Ti,)* $R> LifetimeFamily<'lower, 'upper>
-        for fn($($Ti),*) -> $R
-        where
-            $(
-                $Ti: ?Sized + LifetimeFamily<'lower, 'upper>,
-            )*
-            $R: ?Sized + LifetimeFamily<'lower, 'upper>,
-        {}
-
         // SAFETY:
         // - If `Self::covariant_assertions()` does not panic,
-        //   then `'varying` is covariant in `Self<'varying>`.
+        //   then `Self<'varying>` is covariant over `'varying`.
         //
-        //   The former implies that `Ti::contravariant_assertions()` and
+        //   The former implies that each `Ti::contravariant_assertions()` and
         //   `R::covariant_assertions()` do not panic,
-        //   in which case `'varying` is contravarint in `Ti<'varying>`
-        //   and covariant in `R<'varying>`,
-        //   implying that `'varying` is covariant in `fn(.., Ti<'varying, ..) -> R<'varying>`.
+        //   in which case each `Ti<'varying>` is contravariant over `'varying`
+        //   and `R<'varying>` is covariant over `'varying`,
+        //   implying that `fn(.., Ti<'varying, ..) -> R<'varying>` is covariant over `'varying`.
         //
         // - No assertions are included other than those in `Self::covariant_assertions()`.
         // - The implementation safety requirements of `shorten` and `shorten_ref` are met.
@@ -154,13 +148,13 @@ macro_rules! fn_family {
 
         // SAFETY:
         // - If `Self::contravariant_assertions()` does not panic,
-        //   then `'varying` is contravariant in `Self<'varying>`.
+        //   then `Self<'varying>` is contravariant over `'varying`.
         //
-        //   The former implies that `Ti::covariant_assertions()` and
+        //   The former implies that each `Ti::covariant_assertions()` and
         //   `R::contravariant_assertions()` do not panic,
-        //   in which case `'varying` is covariant in `Ti<'varying>`
-        //   and contravariant in `R<'varying>`,
-        //   implying that `'varying` is contravariant in `fn(.., Ti<'varying, ..) -> R<'varying>`.
+        //   in which case each `Ti<'varying>` is covariant over `'varying`
+        //   and `R<'varying>` is contravariant over `'varying`,
+        //   implying that `fn(.., Ti<'varying, ..) -> R<'varying>` is contravariant over it.
         //
         // - No assertions are included other than those in `Self::contravariant_assertions()`.
         // - The implementation safety requirements of `lengthen` and `lengthen_ref` are met.

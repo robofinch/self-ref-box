@@ -1,7 +1,5 @@
 #![no_std]
 #![expect(unsafe_code, reason = "allow unsafe code to rely on the marker trait impls")]
-// Note: in various safety comments, "is covariant in" or "is contravariant in" means, more
-// precisely, "can be covariantly casted in" or "can be contravariantly casted in".
 
 #[cfg(feature = "alloc")]
 extern crate alloc;
@@ -9,7 +7,7 @@ extern crate alloc;
 #[cfg(feature = "std")]
 extern crate std;
 
-/// The traits which are the central purpose of this crate
+/// The traits which are the central purpose of this crate.
 mod traits;
 /// An `Unvarying` type that implements `UnvaryingFamily`, greatly useful for trivial families not
 /// implemented here.
@@ -62,7 +60,7 @@ mod std_impls;
 
 
 pub use self::traits::{
-    ContravariantFamily, CovariantFamily, ImplyBound, LifetimeFamily, UnvaryingFamily,
+    BivariantFamily, ContravariantFamily, CovariantFamily, ImplyBound, LifetimeFamily,
     Varying, WithLifetime,
 };
 pub use self::main_const_impls::VaryingRef;

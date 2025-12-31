@@ -1,22 +1,24 @@
 use core::mem::transmute;
 
 use crate::invariant_zst;
-use crate::traits::{ContravariantFamily, CovariantFamily, LifetimeFamily, Varying, WithLifetime};
+use crate::traits::{ContravariantFamily, CovariantFamily, Varying, WithLifetime};
 
 
 // We *could* use the public macros to implement everything besides the function pointer cases,
 // but I think it's valuable to show the full `unsafe` code for at least the most crucial cases.
 
-// Note: in below safety comments, "is covariant in" or "is contravariant in" means, more
-// precisely, "can be covariantly casted in" or "can be contravariantly casted in".
+// Note: in below safety comments, "is covariant over" or "is contravariant over" means, more
+// precisely, "is sound to covariantly (or contravariantly) cast with respect to". That is,
+// manually-proven variance (and manually-proven soundness of casts) is the relevant concern,
+// not compiler-assigned variance (and compiler-proven soundness of casts).
 
 // ================================================================
 //  &'a T
 // ================================================================
 
 // Safety summary:
-// - `'varying` is covariant in `&'a T<'varying>` if it's covariant in `T<'varying>`.
-// - it's contravariant in `&'a T<'varying>` if it's contravariant in `T<'varying>`.
+// - `&'a T<'varying>` is covariant over `'varying` if `T<'varying>` is covariant over `'varying`.
+// - `&'a T<'varying>` is contravariant over `'varying` if `T<'varying>` is contravariant over it.
 
 impl<'a, 'varying, 'lower, 'upper, T> WithLifetime<'varying, 'lower, 'upper> for &'a T
 where
@@ -26,19 +28,13 @@ where
     type Is = &'a T::Is;
 }
 
-impl<'a, 'lower, 'upper, T> LifetimeFamily<'lower, 'upper> for &'a T
-where
-    T: ?Sized + LifetimeFamily<'lower, 'upper>,
-    for<'varying> <T as WithLifetime<'varying, 'lower, 'upper>>::Is: 'a,
-{}
-
 // SAFETY:
 // - If `Self::covariant_assertions()` does not panic,
-//   then `'varying` is covariant in `Self<'varying>`.
+//   then `Self<'varying>` is covariant over `'varying`.
 //
 //   The former implies that `T::covariant_assertions()` does not panic,
-//   in which case `'varying` is covariant in `T<'varying>`,
-//   implying that `'varying` is covariant in `&'a T<'varying>`.
+//   in which case `T<'varying>` is covariant over `'varying`,
+//   implying that `&'a T<'varying>` is covariant over `'varying`.
 //
 // - No assertions are included other than those in `Self::covariant_assertions()`.
 // - The implementation safety requirements of `shorten` and `shorten_ref` are met.
@@ -99,11 +95,11 @@ where
 
 // SAFETY:
 // - If `Self::contravariant_assertions()` does not panic,
-//   then `'varying` is contravariant in `Self<'varying>`.
+//   then `Self<'varying>` is contravariant over `'varying`.
 //
 //   The former implies that `T::contravariant_assertions()` does not panic,
-//   in which case `'varying` is contravariant in `T<'varying>`,
-//   implying that `'varying` is contravariant in `&'a T<'varying>`.
+//   in which case `T<'varying>` is contravariant over `'varying`,
+//   implying that `&'a T<'varying>` is contravariant over `'varying`.
 //
 // - No assertions are included other than those in `Self::contravariant_assertions()`.
 // - The implementation safety requirements of `lengthen` and `lengthen_ref` are met.
@@ -168,16 +164,16 @@ where
 // ================================================================
 
 // Safety summary:
-// - `'varying` is covariant in `&'varying T<'varying>` if it's covariant in `T<'varying>`
-// - `'varying` is never contravariant in `&'varying T<'varying>`.
+// - `&'varying T<'varying>` is covariant over `'varying` if `T<'varying>` is covariant over it.
+// - `&'varying T<'varying>` is never contravariant over `'varying`.
 
 invariant_zst!(
     /// The `&'varying T<'varying>` lifetime family.
     ///
-    /// If `'varying` is covariant in `T<'varying>`, then `'varying` is covariant in
-    /// `&'varying T<'varying>`.
+    /// If `T<'varying>` is covariant over `'varying`, then `&'varying T<'varying>` is covariant
+    /// over `'varying`.
     ///
-    /// `'varying` is never contravariant in this lifetime family.
+    /// This lifetime family is never contravariant over `'varying`.
     ///
     /// Note that this type itself is just a marker ZST for the family.
     pub struct VaryingRef<T: ?Sized>;
@@ -191,19 +187,13 @@ where
     type Is = &'varying T::Is;
 }
 
-impl<'lower, 'upper, T> LifetimeFamily<'lower, 'upper> for VaryingRef<T>
-where
-    T: ?Sized + LifetimeFamily<'lower, 'upper>,
-    for<'varying> <T as WithLifetime<'varying, 'lower, 'upper>>::Is: 'varying,
-{}
-
 // SAFETY:
 // - If `Self::covariant_assertions()` does not panic,
-//   then `'varying` is covariant in `Self<'varying>`.
+//   then `Self<'varying>` is covariant over `'varying`.
 //
 //   The former implies that `T::covariant_assertions()` does not panic,
-//   in which case `'varying` is covariant in `T<'varying>`,
-//   implying that `'varying` is covariant in `&'varying T<'varying>`.
+//   in which case `T<'varying>` is covariant over `'varying`,
+//   implying that `&'varying T<'varying>` is covariant over `'varying`.
 //
 // - No assertions are included other than those in `Self::covariant_assertions()`.
 // - The implementation safety requirements of `shorten` and `shorten_ref` are met.
@@ -263,7 +253,8 @@ where
     }
 }
 
-// `'varying` is never contravariant in `&'varying T<'varying>`. It's always at best covariant.
+// `&'varying T<'varying>` is never contravariant over `'varying`. It's always at best covariant,
+// never bivariant.
 
 
 // ================================================================
@@ -271,8 +262,8 @@ where
 // ================================================================
 
 // Safety summary:
-// - `'varying` is covariant in `*const T<'varying>` if it's covariant in `T<'varying>`
-// - it's contravariant in `*const T<'varying>` if it's contravariant in `T<'varying>`.
+// - `*const T<'varying>` is covariant over `'varying` if `T<'varying>` is covariant over it.
+// - `*const T<'varying>` is contravariant over it if `T<'varying>` is contravariant over it.
 
 impl<'varying, 'lower, 'upper, T> WithLifetime<'varying, 'lower, 'upper> for *const T
 where
@@ -281,18 +272,13 @@ where
     type Is = *const T::Is;
 }
 
-impl<'lower, 'upper, T> LifetimeFamily<'lower, 'upper> for *const T
-where
-    T: ?Sized + LifetimeFamily<'lower, 'upper>,
-{}
-
 // SAFETY:
 // - If `Self::covariant_assertions()` does not panic,
-//   then `'varying` is covariant in `Self<'varying>`.
+//   then `Self<'varying>` is covariant over `'varying`.
 //
 //   The former implies that `T::covariant_assertions()` does not panic,
-//   in which case `'varying` is covariant in `T<'varying>`,
-//   implying that `'varying` is covariant in `*const T<'varying>`.
+//   in which case `T<'varying>` is covariant over `'varying`,
+//   implying that `*const T<'varying>` is covariant over `'varying`.
 //
 // - No assertions are included other than those in `Self::covariant_assertions()`.
 // - The implementation safety requirements of `shorten` and `shorten_ref` are met.
@@ -307,12 +293,16 @@ where
 
     /// Shorten the `'varying` lifetime of `*const T<'varying>`.
     ///
-    /// If the source pointer points to a valid value of type `Varying<'l, 'lower, 'upper, T>`
-    /// (also referred to as `T<'l>`), that pointer (which is returned with a casted type)
-    /// also points to a valid value of type  `Varying<'s, 'lower, 'upper, T>`
+    /// If the given pointer points to a valid value of type `Varying<'l, 'lower, 'upper, T>`
+    /// (also referred to as `T<'l>`), the returned pointer (which is the given pointer with a
+    /// casted type) points to a valid value of type `Varying<'s, 'lower, 'upper, T>`
     /// (also referred to as `T<'s>`).
     ///
-    /// `unsafe` code can rely on that guarantee.
+    /// As the returned pointer is not modified (other than to change its type), any other
+    /// qualities relevant for reads or writes through the pointer (such as alignment or provenance)
+    /// are unchanged.
+    ///
+    /// `unsafe` code can rely on this guarantee.
     fn shorten<'l, 's>(
         long: Varying<'l, 'lower, 'upper, Self>,
     ) -> Varying<'s, 'lower, 'upper, Self>
@@ -344,7 +334,11 @@ where
     /// type) also points to a valid value of type `Varying<'s, 'lower, 'upper, T>` (also referred
     /// to as `T<'s>`).
     ///
-    /// `unsafe` code can rely on that guarantee.
+    /// As the returned reference to the pointer is not modified (other than to change the
+    /// pointer's type), any other qualities relevant for reads or writes through the pointer
+    /// (such as alignment or provenance) are unchanged.
+    ///
+    /// `unsafe` code can rely on this guarantee.
     fn shorten_ref<'l, 's, 'r>(
         long: &'r Varying<'l, 'lower, 'upper, Self>,
     ) -> &'r Varying<'s, 'lower, 'upper, Self>
@@ -373,11 +367,11 @@ where
 
 // SAFETY:
 // - If `Self::contravariant_assertions()` does not panic,
-//   then `'varying` is contravariant in `Self<'varying>`.
+//   then `Self<'varying>` is contravariant over `'varying`.
 //
 //   The former implies that `T::contravariant_assertions()` does not panic,
-//   in which case `'varying` is contravariant in `T<'varying>`,
-//   implying that `'varying` is contravariant in `*const T<'varying>`.
+//   in which case `T<'varying>` is contravariant over `'varying`,
+//   implying that `*const T<'varying>` is contravariant over `'varying`.
 //
 // - No assertions are included other than those in `Self::contravariant_assertions()`.
 // - The implementation safety requirements of `lengthen` and `lengthen_ref` are met.
@@ -390,6 +384,18 @@ where
         T::contravariant_assertions();
     }
 
+    /// Lengthen the `'varying` lifetime of `*const T<'varying>`.
+    ///
+    /// If the given pointer points to a valid value of type `Varying<'s, 'lower, 'upper, T>`
+    /// (also referred to as `T<'s>`), the returned pointer (which is the given pointer with a
+    /// casted type) points to a valid value of type `Varying<'l, 'lower, 'upper, T>`
+    /// (also referred to as `T<'l>`).
+    ///
+    /// As the returned pointer is not modified (other than to change its type), any other
+    /// qualities relevant for reads or writes through the pointer (such as alignment or provenance)
+    /// are unchanged.
+    ///
+    /// `unsafe` code can rely on this guarantee.
     #[inline]
     fn lengthen<'s, 'l>(
         short: Varying<'s, 'lower, 'upper, Self>,
@@ -415,6 +421,18 @@ where
         src as *const Varying<'l, 'lower, 'upper, T>
     }
 
+    /// Lenghten the `'varying` lifetime of `&(*const T<'varying>)`.
+    ///
+    /// If the referenced pointer points to a valid value of type `Varying<'s, 'lower, 'upper, T>`
+    /// (also referred to as `T<'s>`), that pointer (whose reference is returned with a casted
+    /// type) also points to a valid value of type `Varying<'l, 'lower, 'upper, T>` (also referred
+    /// to as `T<'l>`).
+    ///
+    /// As the returned reference to the pointer is not modified (other than to change the
+    /// pointer's type), any other qualities relevant for reads or writes through the pointer
+    /// (such as alignment or provenance) are unchanged.
+    ///
+    /// `unsafe` code can rely on this guarantee.
     #[inline]
     fn lengthen_ref<'s, 'l, 'r>(
         short: &'r Varying<'s, 'lower, 'upper, Self>,
