@@ -7,65 +7,69 @@ trait Sealed {
 }
 
 /// Provide implied bounds for a `'varying` lifetime, bounding it between
-/// `'lower` and `'upper` lifetimes.
+/// a lower lifetime `'lower` and all lifetimes in a `U` upper bound.
 #[expect(private_bounds, reason = "intentionally creating a sealed trait")]
 pub trait ImplyBound: Sealed {}
 
-impl<'varying> Sealed for (&'varying &'_ (), &'_ &'varying ()) {}
-impl<'varying> ImplyBound for (&'varying &'_ (), &'_ &'varying ()) {}
+impl<'varying, Upper: ?Sized> Sealed for (&'_ &'varying (), &'varying Upper) {}
+impl<'varying, Upper: ?Sized> ImplyBound for (&'_ &'varying (), &'varying Upper) {}
 
 /// An uninhabited type for sealing a `WithLifetime` method.
 enum PrivateSeal {}
 
 /// Apply a `'varying` lifetime to a family of types, and provide implied bounds that
-/// bound `'varying` between `'lower` and `'upper`.
+/// bound `'varying` between `'lower` and all lifetimes in an `Upper` bound.
+///
+/// (If `Upper` has no lifetimes, the upper bound on `'varying` is `'static`. If `Upper` does
+/// contain lifetimes, the upper bound is the shortest lifetime in `Upper`.)
 ///
 /// ## Lifetimes
 ///
-/// The trait should be implemented for as many values of `'lower` and `'upper` as possible. In
-/// particular, even if an implementation does not need a nontrivial `'upper` bound, do not solely
-/// implement the trait for `'upper = 'static` (unless it's required that `'lower: 'static`).
+/// The trait should be implemented for as many values of `'lower` and `Upper` as possible. In
+/// particular, even if an implementation does not need a nontrivial upper bound on `'varying`, do
+/// not solely implement the trait for `'static` upper bounds (unless it's required that
+/// `'lower: 'static`).
 ///
-/// Preserving maximum flexibility in lifetimes is important, as implementing
-/// `for<'varying, 'any> WithLifetime<'varying, 'any, 'static>` does not automatically imply
-/// implementations of `WithLifetime` for any other combinations of lifetimes, even though,
-/// semantically, we can reason that `for<'varying, 'any> WithLifetime<'varying, 'any, 'static>`
-/// applies maximally loose lower and upper bounds on `'varying` and should allow for upper bounds
-/// shorter than `'static`.
+/// Preserving maximum flexibility in lifetimes and upper bounds is important, as implementing
+/// `for<'varying, 'any> WithLifetime<'varying, 'any, &'static ()>` does not automatically imply
+/// implementations of `WithLifetime` for any other combinations of lifetimes and upper bounds,
+/// even though, semantically, we can reason that
+/// `for<'varying, 'any> WithLifetime<'varying, 'any, &'static ()>` applies maximally loose lower
+/// and upper bounds on `'varying` and should allow for arbitrary upper bounds.
 ///
 /// ## Why not a GAT
 ///
 /// This trait is very similar to a generic associated type (GAT):
 /// ```
-/// pub trait LifetimeFamily<'lower, 'upper> {
+/// pub trait LifetimeFamily<'lower, Upper: ?Sized> {
 ///     type WithLifetime<'varying>: ?Sized
 ///     where
-///         'upper: 'varying,
+///         Upper: 'varying,
 ///         'varying: 'lower;
 /// }
 /// ```
 ///
-/// However, `for<'varying> <T as LifetimeFamily<'lower, 'upper>>::WithLifetime<'varying>: ..Bounds`
+/// However, `for<'varying> <T as LifetimeFamily<'lower, Upper>>::WithLifetime<'varying>: ..Bounds`
 /// would not work very well; the `for<'varying>` binder may still attempt to quantify over
-/// lifetimes shorter than `'lower` and longer than `'upper`. For some reason, as of Rust 1.90.0,
-/// the `for<'varying> ..: ..Bounds` bound would compile. However, any attempts to *use*
+/// lifetimes shorter than `'lower` and which outlive `Upper`. For some reason, as of Rust 1.90.0,
+/// the `for<'varying> ..: ..Bounds` bound would still compile. However, any attempts to *use*
 /// whatever has that bound would fail with an opaque "higher-ranked lifetime error".
 ///
 /// In short, `for<'varying> ..` bounds do not work even remotely well with a GAT, greatly
 /// limiting any nontrivial uses of a `LifetimeFamily`.
 ///
 /// With this trait's use of implied bounds,
-/// `for<'varying> <T as WithLifetime<'varying, 'lower, 'upper>>::Is: ..Bounds` quantifies only
-/// over `'varying` lifetimes between `'lower` and `'upper`.
+/// `for<'varying> <T as WithLifetime<'varying, 'lower, Upper>>::Is: ..Bounds` quantifies only
+/// over `'varying` lifetimes between `'lower` and all lifetimes in `Upper`.
 ///
 /// ## Alias
 ///
-/// Note that `<T as WithLifetime<'varying, 'lower, 'upper>>::Is` is also available as a
-/// [`Varying<'varying, 'lower, 'upper, T>`] alias (which is 13 characters shorter, and perhaps
+/// Note that `<T as WithLifetime<'varying, 'lower, Upper>>::Is` is also available as a
+/// [`Varying<'varying, 'lower, Upper, T>`] alias (which is 13 characters shorter, and perhaps
 /// easier to read and write).
 pub trait WithLifetime<
-    'varying, 'lower, 'upper,
-    __ImplyBound: ImplyBound = (&'varying &'upper (), &'lower &'varying ()),
+    'varying, 'lower, Upper: ?Sized,
+    __ImplyBound: ImplyBound = (&'lower &'varying (), &'varying Upper),
 > {
     type Is: ?Sized;
 
@@ -81,8 +85,8 @@ pub trait WithLifetime<
 }
 
 /// A slightly shorter and more legible alias for
-/// `<T as WithLifetime<'varying, 'lower, 'upper>>::Is`.
-pub type Varying<'varying, 'lower, 'upper, T> = <T as WithLifetime<'varying, 'lower, 'upper>>::Is;
+/// `<T as WithLifetime<'varying, 'lower, Upper>>::Is`.
+pub type Varying<'varying, 'lower, Upper, T> = <T as WithLifetime<'varying, 'lower, Upper>>::Is;
 
 /// A family of types which are parameterized by a `'varying` lifetime.
 ///
@@ -91,44 +95,52 @@ pub type Varying<'varying, 'lower, 'upper, T> = <T as WithLifetime<'varying, 'lo
 ///
 /// You should ensure that users of your implementation can use weaker lifetime bounds. In
 /// particular, provide the strongest guarantees you can (implement `WithLifetime` with as many
-/// lifetime values as possible, including weaker / more restrictive bounds) and use the weakest
-/// bounds you can (as few lifetime values as possible) when bounding by `LifetimeFamily`.
+/// lifetime values and upper bounds as possible, including weaker / more restrictive bounds) and
+/// use the weakest bounds you can (the highest lower bounds and the lowest upper bounds) when
+/// bounding by `LifetimeFamily`.
 ///
 /// Note that this trait is effectively a trait alias for
-/// `for<'varying> WithLifetime<'varying, 'lower, 'upper>`; all possible implementations of this
+/// `for<'varying> WithLifetime<'varying, 'lower, Upper>`; all possible implementations of this
 /// trait are provided, and you should implement [`WithLifetime`] for your types.
-pub trait LifetimeFamily<'lower, 'upper>: for<'varying> WithLifetime<'varying, 'lower, 'upper> {}
-
-impl<'lower, 'upper, T> LifetimeFamily<'lower, 'upper> for T
+pub trait LifetimeFamily<'lower, Upper>
 where
-    T: ?Sized + for<'varying> WithLifetime<'varying, 'lower, 'upper>,
+    Upper: ?Sized,
+    Self: for<'varying> WithLifetime<'varying, 'lower, Upper>,
+{}
+
+impl<'lower, Upper, T> LifetimeFamily<'lower, Upper> for T
+where
+    Upper: ?Sized,
+    T: ?Sized + for<'varying> WithLifetime<'varying, 'lower, Upper>,
 {}
 
 /// A trivial "lifetime family" of types parameterized by a `'varying` lifetime which don't
 /// actually use the `'varying` parameter.
 ///
-/// For any `'varying` lifetime between `'lower` and `'upper`, the type
-/// `Varying<'varying, 'lower, 'upper, Self>` is simply equal to `Self::WithAnyLifetime`.
+/// For any `'varying` lifetime between `'lower` and all lifetimes in `Upper`, the type
+/// `Varying<'varying, 'lower, Upper, Self>` is simply equal to `Self::WithAnyLifetime`.
 ///
 /// All possible implementations of this trait are already provided.
 ///
 /// # Note on Lower Bound
-/// While the maximally loose `'upper` bound is `'static`, there's no special lifetime which
-/// serves as a lower bound for all other lifetimes. Instead,
-/// `for<'lower> UnvaryingFamily<'lower, 'upper>` uses a maximally loose lower bound (and
-/// implied bounds ensure that this works regardless of what `'upper` is).
-pub trait UnvaryingFamily<'lower, 'upper>:
-    LifetimeFamily<'lower, 'upper>
-        + for<'varying> WithLifetime<'varying, 'lower, 'upper, Is = Self::WithAnyLifetime>
+/// While any `Upper` type such that `Upper: 'static` provides a maximally loose upper bound on
+/// `'varying`, there's no special lifetime that can be substituted into `'lower` to serve as a
+/// lower bound for all other lifetimes. Instead, `for<'lower> UnvaryingFamily<'lower, Upper>`
+/// provides a maximally loose lower bound (and implied bounds ensure that this works regardless of
+/// what `Upper` is).
+pub trait UnvaryingFamily<'lower, Upper: ?Sized>:
+    LifetimeFamily<'lower, Upper>
+        + for<'varying> WithLifetime<'varying, 'lower, Upper, Is = Self::WithAnyLifetime>
 {
     type WithAnyLifetime: ?Sized;
 }
 
-impl<'lower, 'upper, T, U> UnvaryingFamily<'lower, 'upper> for T
+impl<'lower, Upper, T, U> UnvaryingFamily<'lower, Upper> for T
 where
+    Upper: ?Sized,
     T: ?Sized
-        + LifetimeFamily<'lower, 'upper>
-        + for<'varying> WithLifetime<'varying, 'lower, 'upper, Is = U>,
+        + LifetimeFamily<'lower, Upper>
+        + for<'varying> WithLifetime<'varying, 'lower, Upper, Is = U>,
     U: ?Sized,
 {
     type WithAnyLifetime = U;
@@ -142,15 +154,19 @@ where
 /// documentation throughout this crate, "covariance" may actually refer to
 /// "the ability to soundly be covariantly casted" instead of the variance assigned by the compiler.
 ///
-/// # Note on Lower Bound
-/// While the maximally loose `'upper` bound is `'static`, there's no special lifetime which
-/// serves as a lower bound for all other lifetimes. Instead,
-/// `for<'lower> CovariantFamily<'lower, 'upper>` uses a maximally loose lower bound (and
-/// implied bounds ensure that this works regardless of what `'upper` is).
+/// # Note on Bounds
+/// If `Upper` has no lifetimes, the upper bound on `'varying` is `'static`. If `Upper` does
+/// contain lifetimes, the upper bound is the shortest lifetime in `Upper`.
+///
+/// While any `Upper` type such that `Upper: 'static` provides a maximally loose upper bound on
+/// `'varying`, there's no special lifetime that can be substituted into `'lower` to serve as a
+/// lower bound for all other lifetimes. Instead, `for<'lower> CovariantFamily<'lower, Upper>`
+/// provides a maximally loose lower bound (and implied bounds ensure that this works regardless of
+/// what `Upper` is).
 ///
 /// As covariant lifetimes are usually freely shrinkable (such as `&'varying mut [u8]`) with
 /// only unusual exceptions (such as `&'a &'varying u8`, which requires `'varying: 'a`), common
-/// use cases will likely require `for<'lower> CovariantFamily<'lower, 'upper>` bounds.
+/// use cases will likely require `for<'lower> CovariantFamily<'lower, Upper>` bounds.
 ///
 /// # Safety of Use
 /// Code can always use safe methods to change the `'varying` lifetime, including
@@ -183,7 +199,8 @@ where
 ///
 /// - If [`CovariantFamily::covariant_assertions`] does not panic, then `'varying` must be sound
 ///   to cast covariantly in `T<'varying>` (where `T<'varying>` is shorthand for
-///   `Varying<'varying, 'lower, 'upper, T>`, and `'varying` is bounded by `'lower` and `'upper`).
+///   `Varying<'varying, 'lower, Upper, T>`, and `'varying` is bounded by `'lower` and any
+///   lifetimes in `Upper`).
 ///
 /// - No assertions not included within `covariant_assertions` may be used.
 ///
@@ -191,7 +208,7 @@ where
 ///
 /// ## Precise Elaboration
 /// For any implementation of this type, it must be sound to cast the `'varying` lifetime of
-/// `Varying<'varying, 'lower, 'upper, T>` to any shorter lifetime which is at least as long as
+/// `Varying<'varying, 'lower, Upper, T>` to any shorter lifetime which is at least as long as
 /// `'lower`.
 ///
 /// Compile-time assertions (possibly resulting in post-monomorphization errors) may be placed
@@ -210,7 +227,7 @@ where
 /// If the compiler considers the lifetime family to be covariant over `'varying`, then this trait
 /// can be soundly implemented. For instance, `&'a &'varying str`, `&'varying &'a str`, and
 /// `fn(&'a fn(&'varying str))` can soundly implement this trait with appropriate `'lower` and
-/// `'upper` bounds.
+/// `Upper` bounds.
 ///
 /// If `'varying` is entirely unused in the lifetime family, meaning that the "family" consists of
 /// a single type, this trait can be soundly implemented. Examples include `u8`, `[u8]`, and
@@ -240,34 +257,34 @@ where
 /// /// `CouldBeCovariant<'varying>` can be treated as covariant over `'varying`; the invariance of
 /// /// `'varying` is utterly unimportant for safety. Semantically, it varies the same as
 /// /// `&'varying str`.
-/// unsafe impl<'lower, 'upper> CovariantFamily<'lower, 'upper> for CouldBeCovariantFamily {
+/// unsafe impl<'lower, Upper: ?Sized> CovariantFamily<'lower, Upper> for CouldBeCovariantFamily {
 ///     /// Performs no assertions.
 ///     #[inline]
 ///     fn covariant_assertions() {}
 ///
 ///     #[inline]
 ///     fn shorten<'l, 's>(
-///         long: Varying<'l, 'lower, 'upper, Self>,
-///     ) -> Varying<'s, 'lower, 'upper, Self>
+///         long: Varying<'l, 'lower, Upper, Self>,
+///     ) -> Varying<'s, 'lower, Upper, Self>
 ///     where
-///         'upper: 'l,
+///         Upper: 'l,
 ///         'l: 's,
 ///         's: 'lower,
-///         for<'varying> Varying<'varying, 'lower, 'upper, Self>: Sized,
+///         for<'varying> Varying<'varying, 'lower, Upper, Self>: Sized,
 ///     {
 ///         CouldBeCovariant(long.0, PhantomData)
 ///     }
 ///
 ///     #[inline]
 ///     fn shorten_ref<'l, 's, 'r>(
-///         long: &'r Varying<'l, 'lower, 'upper, Self>,
-///     ) -> &'r Varying<'s, 'lower, 'upper, Self>
+///         long: &'r Varying<'l, 'lower, Upper, Self>,
+///     ) -> &'r Varying<'s, 'lower, Upper, Self>
 ///     where
-///         'upper: 'l,
+///         Upper: 'l,
 ///         'l: 's,
 ///         's: 'lower,
-///         Varying<'l, 'lower, 'upper, Self>: 'r,
-///         Varying<'s, 'lower, 'upper, Self>: 'r,
+///         Varying<'l, 'lower, Upper, Self>: 'r,
+///         Varying<'s, 'lower, Upper, Self>: 'r,
 ///     {
 ///         let long: &'r CouldBeCovariant<'l> = long;
 ///         // SAFETY: this shortens the lifetime of the pointee. Shortening `&'l str` to
@@ -286,7 +303,7 @@ where
 /// ```
 ///
 /// [`transmute`]: core::mem::transmute
-pub unsafe trait CovariantFamily<'lower, 'upper>: LifetimeFamily<'lower, 'upper> {
+pub unsafe trait CovariantFamily<'lower, Upper: ?Sized>: LifetimeFamily<'lower, Upper> {
     /// Perform compile-time assertions, which may cause post-monomorphization errors.
     ///
     /// (The function could, hypothetically, also include runtime assertions.)
@@ -320,13 +337,13 @@ pub unsafe trait CovariantFamily<'lower, 'upper>: LifetimeFamily<'lower, 'upper>
     #[expect(clippy::unnecessary_safety_doc, reason = "False positive; it's only for implementors")]
     #[must_use]
     fn shorten<'l, 's>(
-        long: Varying<'l, 'lower, 'upper, Self>,
-    ) -> Varying<'s, 'lower, 'upper, Self>
+        long: Varying<'l, 'lower, Upper, Self>,
+    ) -> Varying<'s, 'lower, Upper, Self>
     where
-        'upper: 'l,
+        Upper: 'l,
         'l: 's,
         's: 'lower,
-        for<'varying> Varying<'varying, 'lower, 'upper, Self>: Sized;
+        for<'varying> Varying<'varying, 'lower, Upper, Self>: Sized;
 
     /// Soundly shorten the `'varying` lifetime of `&Self::WithLifetime<'varying>`.
     ///
@@ -354,14 +371,14 @@ pub unsafe trait CovariantFamily<'lower, 'upper>: LifetimeFamily<'lower, 'upper>
     #[expect(clippy::unnecessary_safety_doc, reason = "False positive; it's only for implementors")]
     #[must_use]
     fn shorten_ref<'l, 's, 'r>(
-        long: &'r Varying<'l, 'lower, 'upper, Self>,
-    ) -> &'r Varying<'s, 'lower, 'upper, Self>
+        long: &'r Varying<'l, 'lower, Upper, Self>,
+    ) -> &'r Varying<'s, 'lower, Upper, Self>
     where
-        'upper: 'l,
+        Upper: 'l,
         'l: 's,
         's: 'lower,
-        Varying<'l, 'lower, 'upper, Self>: 'r,
-        Varying<'s, 'lower, 'upper, Self>: 'r;
+        Varying<'l, 'lower, Upper, Self>: 'r,
+        Varying<'s, 'lower, Upper, Self>: 'r;
 }
 
 /// A "lifetime family" of types parameterized by a `'varying` lifetime such that performing
@@ -372,11 +389,15 @@ pub unsafe trait CovariantFamily<'lower, 'upper>: LifetimeFamily<'lower, 'upper>
 /// "contravariance" may actually refer to "the ability to soundly be contravariantly casted"
 /// instead of the variance assigned by the compiler.
 ///
-/// # Note on Lower Bound
-/// While the maximally loose `'upper` bound is `'static`, there's no special lifetime which
-/// serves as a lower bound for all other lifetimes. Instead,
-/// `for<'lower> ContravariantFamily<'lower, 'upper>` uses a maximally loose lower bound (and
-/// implied bounds ensure that this works regardless of what `'upper` is).
+/// # Note on Bounds
+/// If `Upper` has no lifetimes, the upper bound on `'varying` is `'static`. If `Upper` does
+/// contain lifetimes, the upper bound is the shortest lifetime in `Upper`.
+///
+/// While any `Upper` type such that `Upper: 'static` provides a maximally loose upper bound on
+/// `'varying`, there's no special lifetime that can be substituted into `'lower` to serve as a
+/// lower bound for all other lifetimes. Instead, `for<'lower> ContravariantFamily<'lower, Upper>`
+/// provides a maximally loose lower bound (and implied bounds ensure that this works regardless of
+/// what `Upper` is).
 ///
 /// # Safety of Use
 /// Code can always use safe methods to change the `'varying` lifetime, including
@@ -408,7 +429,7 @@ pub unsafe trait CovariantFamily<'lower, 'upper>: LifetimeFamily<'lower, 'upper>
 ///
 /// - If [`ContravariantFamily::contravariant_assertions`] does not panic, then `'varying` must be
 ///   sound to cast contravariantly in `T<'varying>` (where `T<'varying>` is shorthand for
-///   `Varying<'varying, 'lower, 'upper, T>`, and `'varying` is bounded by `'lower` and `'upper`).
+///   `Varying<'varying, 'lower, Upper, T>`, and `'varying` is bounded by `'lower` and `Upper`).
 ///
 /// - No assertions not included within `contravariant_assertions` may be used.
 ///
@@ -416,8 +437,8 @@ pub unsafe trait CovariantFamily<'lower, 'upper>: LifetimeFamily<'lower, 'upper>
 ///
 /// ## Precise Elaboration
 /// For any implementation of this type, it must be sound to cast the `'varying` lifetime of
-/// `Varying<'varying, 'lower, 'upper, T>` to any longer lifetime which is at most as long as
-/// `'upper`.
+/// `Varying<'varying, 'lower, Upper, T>` to any longer lifetime which is at most as long as
+/// all lifetimes in `Upper`.
 ///
 /// Compile-time assertions (possibly resulting in post-monomorphization errors) may be placed
 /// in [`ContravariantFamily::contravariant_assertions`], which serve as additional preconditions
@@ -435,7 +456,7 @@ pub unsafe trait CovariantFamily<'lower, 'upper>: LifetimeFamily<'lower, 'upper>
 /// If the compiler considers the lifetime family to be contravarint over `'varying`, then this
 /// trait can be soundly implemented. For instance, `fn(&'a &'varying str)` and
 /// `fn(&'varying &'a str)` can soundly implement this trait, with appropriate `'lower` and
-/// `'upper` bounds.
+/// `Upper` bounds.
 ///
 /// If `'varying` is entirely unused in the lifetime family, meaning that the "family" consists of
 /// a single type, this trait can be soundly implemented. Examples include `u8`, `[u8]`, and
@@ -448,7 +469,7 @@ pub unsafe trait CovariantFamily<'lower, 'upper>: LifetimeFamily<'lower, 'upper>
 /// contravariant.
 ///
 /// [`transmute`]: core::mem::transmute
-pub unsafe trait ContravariantFamily<'lower, 'upper>: LifetimeFamily<'lower, 'upper> {
+pub unsafe trait ContravariantFamily<'lower, Upper: ?Sized>: LifetimeFamily<'lower, Upper> {
     /// Perform compile-time assertions, which may cause post-monomorphization errors.
     ///
     /// (The function could, hypothetically, also include runtime assertions.)
@@ -482,13 +503,13 @@ pub unsafe trait ContravariantFamily<'lower, 'upper>: LifetimeFamily<'lower, 'up
     #[expect(clippy::unnecessary_safety_doc, reason = "False positive; it's only for implementors")]
     #[must_use]
     fn lengthen<'s, 'l>(
-        short: Varying<'s, 'lower, 'upper, Self>,
-    ) -> Varying<'l, 'lower, 'upper, Self>
+        short: Varying<'s, 'lower, Upper, Self>,
+    ) -> Varying<'l, 'lower, Upper, Self>
     where
-        'upper: 'l,
-        'l:     's,
-        's:     'lower,
-        for<'varying> Varying<'varying, 'lower, 'upper, Self>: Sized;
+        Upper: 'l,
+        'l: 's,
+        's: 'lower,
+        for<'varying> Varying<'varying, 'lower, Upper, Self>: Sized;
 
     /// Soundly lengthen the `'varying` lifetime of `&Self::WithLifetime<'varying>`.
     ///
@@ -516,12 +537,12 @@ pub unsafe trait ContravariantFamily<'lower, 'upper>: LifetimeFamily<'lower, 'up
     #[expect(clippy::unnecessary_safety_doc, reason = "False positive; it's only for implementors")]
     #[must_use]
     fn lengthen_ref<'s, 'l, 'r>(
-        short: &'r Varying<'s, 'lower, 'upper, Self>,
-    ) -> &'r Varying<'l, 'lower, 'upper, Self>
+        short: &'r Varying<'s, 'lower, Upper, Self>,
+    ) -> &'r Varying<'l, 'lower, Upper, Self>
     where
-        'upper: 'l,
-        'l:     's,
-        's:     'lower,
-        Varying<'s, 'lower, 'upper, Self>: 'r,
-        Varying<'l, 'lower, 'upper, Self>: 'r;
+        Upper: 'l,
+        'l: 's,
+        's: 'lower,
+        Varying<'s, 'lower, Upper, Self>: 'r,
+        Varying<'l, 'lower, Upper, Self>: 'r;
 }

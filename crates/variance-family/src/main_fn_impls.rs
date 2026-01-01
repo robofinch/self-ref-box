@@ -23,13 +23,14 @@ use crate::traits::{ContravariantFamily, CovariantFamily, Varying, WithLifetime}
 // In particular, the `unsafe impl` could be broken in other environments.
 macro_rules! fn_family {
     (fn($($Ti:ident),*) -> $R:ident) => {
-        impl<'varying, 'lower, 'upper, $($Ti,)* $R> WithLifetime<'varying, 'lower, 'upper>
+        impl<'varying, 'lower, Upper, $($Ti,)* $R> WithLifetime<'varying, 'lower, Upper>
         for fn($($Ti),*) -> $R
         where
+            Upper: ?Sized,
             $(
-                $Ti: ?Sized + WithLifetime<'varying, 'lower, 'upper>,
+                $Ti: ?Sized + WithLifetime<'varying, 'lower, Upper>,
             )*
-            $R: ?Sized + WithLifetime<'varying, 'lower, 'upper>,
+            $R: ?Sized + WithLifetime<'varying, 'lower, Upper>,
         {
             type Is = fn($($Ti::Is),*) -> $R::Is;
         }
@@ -46,13 +47,14 @@ macro_rules! fn_family {
         //
         // - No assertions are included other than those in `Self::covariant_assertions()`.
         // - The implementation safety requirements of `shorten` and `shorten_ref` are met.
-        unsafe impl<'lower, 'upper, $($Ti,)* $R> CovariantFamily<'lower, 'upper>
+        unsafe impl<'lower, Upper, $($Ti,)* $R> CovariantFamily<'lower, Upper>
         for fn($($Ti),*) -> $R
         where
+            Upper: ?Sized,
             $(
-                $Ti: ?Sized + ContravariantFamily<'lower, 'upper>,
+                $Ti: ?Sized + ContravariantFamily<'lower, Upper>,
             )*
-            $R: ?Sized + CovariantFamily<'lower, 'upper>,
+            $R: ?Sized + CovariantFamily<'lower, Upper>,
         {
             #[inline]
             fn covariant_assertions() {
@@ -64,13 +66,13 @@ macro_rules! fn_family {
 
             #[inline]
             fn shorten<'l, 's>(
-                long: Varying<'l, 'lower, 'upper, Self>,
-            ) -> Varying<'s, 'lower, 'upper, Self>
+                long: Varying<'l, 'lower, Upper, Self>,
+            ) -> Varying<'s, 'lower, Upper, Self>
             where
-                'upper: 'l,
+                Upper: 'l,
                 'l: 's,
                 's: 'lower,
-                for<'varying> Varying<'varying, 'lower, 'upper, Self>: Sized,
+                for<'varying> Varying<'varying, 'lower, Upper, Self>: Sized,
             {
                 #![expect(
                     clippy::unnecessary_safety_comment,
@@ -81,8 +83,8 @@ macro_rules! fn_family {
                 // `Self::covariant_assertions()` call.
                 Self::covariant_assertions();
 
-                let src: fn($(Varying<'l, 'lower, 'upper, $Ti>),*)
-                    -> Varying<'l, 'lower, 'upper, $R>
+                let src: fn($(Varying<'l, 'lower, Upper, $Ti>),*)
+                    -> Varying<'l, 'lower, Upper, $R>
                     = long;
 
                 // SAFETY: when the `dst` function is used, its arguments' `'varying` lifetimes
@@ -96,8 +98,8 @@ macro_rules! fn_family {
                 // are parameterized only by lifetimes (and we can assume that specializing on
                 // `'static` is unsound), this transmute is not erroneous with CFI.
                 #[expect(clippy::undocumented_unsafe_blocks, reason = "false positive")]
-                let dst: fn($(Varying<'s, 'lower, 'upper, $Ti>),*)
-                    -> Varying<'s, 'lower, 'upper, $R>
+                let dst: fn($(Varying<'s, 'lower, Upper, $Ti>),*)
+                    -> Varying<'s, 'lower, Upper, $R>
                     = unsafe { transmute(src) };
 
                 dst
@@ -105,14 +107,14 @@ macro_rules! fn_family {
 
             #[inline]
             fn shorten_ref<'l, 's, 'r>(
-                long: &'r Varying<'l, 'lower, 'upper, Self>,
-            ) -> &'r Varying<'s, 'lower, 'upper, Self>
+                long: &'r Varying<'l, 'lower, Upper, Self>,
+            ) -> &'r Varying<'s, 'lower, Upper, Self>
             where
-                'upper: 'l,
+                Upper: 'l,
                 'l: 's,
                 's: 'lower,
-                Varying<'l, 'lower, 'upper, Self>: 'r,
-                Varying<'s, 'lower, 'upper, Self>: 'r,
+                Varying<'l, 'lower, Upper, Self>: 'r,
+                Varying<'s, 'lower, Upper, Self>: 'r,
             {
                 #![expect(
                     clippy::unnecessary_safety_comment,
@@ -123,8 +125,8 @@ macro_rules! fn_family {
                 // `Self::covariant_assertions()` call.
                 Self::covariant_assertions();
 
-                let src: &'r fn($(Varying<'l, 'lower, 'upper, $Ti>),*)
-                    -> Varying<'l, 'lower, 'upper, $R>
+                let src: &'r fn($(Varying<'l, 'lower, Upper, $Ti>),*)
+                    -> Varying<'l, 'lower, Upper, $R>
                     = long;
 
                 // SAFETY: when the `dst` function is used, its arguments' `'varying` lifetimes
@@ -138,8 +140,8 @@ macro_rules! fn_family {
                 // are parameterized only by lifetimes (and we can assume that specializing on
                 // `'static` is unsound), this transmute is not erroneous with CFI.
                 #[expect(clippy::undocumented_unsafe_blocks, reason = "false positive")]
-                let dst: &'r fn($(Varying<'s, 'lower, 'upper, $Ti>),*)
-                    -> Varying<'s, 'lower, 'upper, $R>
+                let dst: &'r fn($(Varying<'s, 'lower, Upper, $Ti>),*)
+                    -> Varying<'s, 'lower, Upper, $R>
                     = unsafe { transmute(src) };
 
                 dst
@@ -158,13 +160,14 @@ macro_rules! fn_family {
         //
         // - No assertions are included other than those in `Self::contravariant_assertions()`.
         // - The implementation safety requirements of `lengthen` and `lengthen_ref` are met.
-        unsafe impl<'lower, 'upper, $($Ti,)* $R> ContravariantFamily<'lower, 'upper>
+        unsafe impl<'lower, Upper, $($Ti,)* $R> ContravariantFamily<'lower, Upper>
         for fn($($Ti),*) -> $R
         where
+            Upper: ?Sized,
             $(
-                $Ti: ?Sized + CovariantFamily<'lower, 'upper>,
+                $Ti: ?Sized + CovariantFamily<'lower, Upper>,
             )*
-            $R: ?Sized + ContravariantFamily<'lower, 'upper>,
+            $R: ?Sized + ContravariantFamily<'lower, Upper>,
         {
             #[inline]
             fn contravariant_assertions() {
@@ -176,13 +179,13 @@ macro_rules! fn_family {
 
             #[inline]
             fn lengthen<'s, 'l>(
-                short: Varying<'s, 'lower, 'upper, Self>,
-            ) -> Varying<'l, 'lower, 'upper, Self>
+                short: Varying<'s, 'lower, Upper, Self>,
+            ) -> Varying<'l, 'lower, Upper, Self>
             where
-                'upper: 'l,
+                Upper: 'l,
                 'l: 's,
                 's: 'lower,
-                for<'varying> Varying<'varying, 'lower, 'upper, Self>: Sized,
+                for<'varying> Varying<'varying, 'lower, Upper, Self>: Sized,
             {
                 #![expect(
                     clippy::unnecessary_safety_comment,
@@ -193,8 +196,8 @@ macro_rules! fn_family {
                 // `Self::contravariant_assertions()` call.
                 Self::contravariant_assertions();
 
-                let src: fn($(Varying<'s, 'lower, 'upper, $Ti>),*)
-                    -> Varying<'s, 'lower, 'upper, $R>
+                let src: fn($(Varying<'s, 'lower, Upper, $Ti>),*)
+                    -> Varying<'s, 'lower, Upper, $R>
                     = short;
 
                 // SAFETY: when the `dst` function is used, its arguments' `'varying` lifetimes
@@ -208,8 +211,8 @@ macro_rules! fn_family {
                 // are parameterized only by lifetimes (and we can assume that specializing on
                 // `'static` is unsound), this transmute is not erroneous with CFI.
                 #[expect(clippy::undocumented_unsafe_blocks, reason = "false positive")]
-                let dst: fn($(Varying<'l, 'lower, 'upper, $Ti>),*)
-                    -> Varying<'l, 'lower, 'upper, $R>
+                let dst: fn($(Varying<'l, 'lower, Upper, $Ti>),*)
+                    -> Varying<'l, 'lower, Upper, $R>
                     = unsafe { transmute(src) };
 
                 dst
@@ -217,14 +220,14 @@ macro_rules! fn_family {
 
             #[inline]
             fn lengthen_ref<'s, 'l, 'r>(
-                short: &'r Varying<'s, 'lower, 'upper, Self>,
-            ) -> &'r Varying<'l, 'lower, 'upper, Self>
+                short: &'r Varying<'s, 'lower, Upper, Self>,
+            ) -> &'r Varying<'l, 'lower, Upper, Self>
             where
-                'upper: 'l,
+                Upper: 'l,
                 'l: 's,
                 's: 'lower,
-                Varying<'l, 'lower, 'upper, Self>: 'r,
-                Varying<'s, 'lower, 'upper, Self>: 'r,
+                Varying<'l, 'lower, Upper, Self>: 'r,
+                Varying<'s, 'lower, Upper, Self>: 'r,
             {
                 #![expect(
                     clippy::unnecessary_safety_comment,
@@ -235,8 +238,8 @@ macro_rules! fn_family {
                 // `Self::contravariant_assertions()` call.
                 Self::contravariant_assertions();
 
-                let src: &'r fn($(Varying<'s, 'lower, 'upper, $Ti>),*)
-                    -> Varying<'s, 'lower, 'upper, $R>
+                let src: &'r fn($(Varying<'s, 'lower, Upper, $Ti>),*)
+                    -> Varying<'s, 'lower, Upper, $R>
                     = short;
 
                 // SAFETY: when the `dst` function is used, its arguments' `'varying` lifetimes
@@ -250,8 +253,8 @@ macro_rules! fn_family {
                 // are parameterized only by lifetimes (and we can assume that specializing on
                 // `'static` is unsound), this transmute is not erroneous with CFI.
                 #[expect(clippy::undocumented_unsafe_blocks, reason = "false positive")]
-                let dst: &'r fn($(Varying<'l, 'lower, 'upper, $Ti>),*)
-                    -> Varying<'l, 'lower, 'upper, $R>
+                let dst: &'r fn($(Varying<'l, 'lower, Upper, $Ti>),*)
+                    -> Varying<'l, 'lower, Upper, $R>
                     = unsafe { transmute(src) };
 
                 dst

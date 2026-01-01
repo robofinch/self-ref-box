@@ -20,9 +20,10 @@ use crate::traits::{ContravariantFamily, CovariantFamily, Varying, WithLifetime}
 // - `&'a T<'varying>` is covariant over `'varying` if `T<'varying>` is covariant over `'varying`.
 // - `&'a T<'varying>` is contravariant over `'varying` if `T<'varying>` is contravariant over it.
 
-impl<'a, 'varying, 'lower, 'upper, T> WithLifetime<'varying, 'lower, 'upper> for &'a T
+impl<'a, 'varying, 'lower, Upper, T> WithLifetime<'varying, 'lower, Upper> for &'a T
 where
-    T: ?Sized + WithLifetime<'varying, 'lower, 'upper>,
+    Upper: ?Sized,
+    T: ?Sized + WithLifetime<'varying, 'lower, Upper>,
     T::Is: 'a,
 {
     type Is = &'a T::Is;
@@ -38,10 +39,11 @@ where
 //
 // - No assertions are included other than those in `Self::covariant_assertions()`.
 // - The implementation safety requirements of `shorten` and `shorten_ref` are met.
-unsafe impl<'a, 'lower, 'upper, T> CovariantFamily<'lower, 'upper> for &'a T
+unsafe impl<'a, 'lower, Upper, T> CovariantFamily<'lower, Upper> for &'a T
 where
-    T: ?Sized + CovariantFamily<'lower, 'upper>,
-    for<'varying> <T as WithLifetime<'varying, 'lower, 'upper>>::Is: 'a,
+    Upper: ?Sized,
+    T: ?Sized + CovariantFamily<'lower, Upper>,
+    for<'varying> <T as WithLifetime<'varying, 'lower, Upper>>::Is: 'a,
 {
     #[inline]
     fn covariant_assertions() {
@@ -50,13 +52,13 @@ where
 
     #[inline]
     fn shorten<'l, 's>(
-        long: Varying<'l, 'lower, 'upper, Self>,
-    ) -> Varying<'s, 'lower, 'upper, Self>
+        long: Varying<'l, 'lower, Upper, Self>,
+    ) -> Varying<'s, 'lower, Upper, Self>
     where
-        'upper: 'l,
+        Upper: 'l,
         'l: 's,
         's: 'lower,
-        for<'varying> Varying<'varying, 'lower, 'upper, Self>: Sized,
+        for<'varying> Varying<'varying, 'lower, Upper, Self>: Sized,
     {
         #![expect(clippy::unnecessary_safety_comment, reason = "implementation safety of method")]
         // Implementation safety: this is just a covariant cast with, possibly, some assertions.
@@ -68,14 +70,14 @@ where
 
     #[inline]
     fn shorten_ref<'l, 's, 'r>(
-        long: &'r Varying<'l, 'lower, 'upper, Self>,
-    ) -> &'r Varying<'s, 'lower, 'upper, Self>
+        long: &'r Varying<'l, 'lower, Upper, Self>,
+    ) -> &'r Varying<'s, 'lower, Upper, Self>
     where
-        'upper: 'l,
+        Upper: 'l,
         'l: 's,
         's: 'lower,
-        Varying<'l, 'lower, 'upper, Self>: 'r,
-        Varying<'s, 'lower, 'upper, Self>: 'r,
+        Varying<'l, 'lower, Upper, Self>: 'r,
+        Varying<'s, 'lower, Upper, Self>: 'r,
     {
         #![expect(clippy::unnecessary_safety_comment, reason = "implementation safety of method")]
         // Implementation safety: this is a covariant cast with some assertions.
@@ -84,11 +86,11 @@ where
 
         Self::covariant_assertions();
 
-        let src: &'r &'a Varying<'l, 'lower, 'upper, T> = long;
+        let src: &'r &'a Varying<'l, 'lower, Upper, T> = long;
         // SAFETY: we are shortening the `'l` lifetime of `T<'l>` to `'s`, which is
         // at least as long as `'lower`. We called `T::covariant_assertions()` (within
         // `Self::covariant_assertions()`), so covariantly casting `T<'varying>` is sound.
-        let dst: &'r &'a Varying<'s, 'lower, 'upper, T> = unsafe { transmute(src) };
+        let dst: &'r &'a Varying<'s, 'lower, Upper, T> = unsafe { transmute(src) };
         dst
     }
 }
@@ -103,10 +105,11 @@ where
 //
 // - No assertions are included other than those in `Self::contravariant_assertions()`.
 // - The implementation safety requirements of `lengthen` and `lengthen_ref` are met.
-unsafe impl<'a, 'lower, 'upper, T> ContravariantFamily<'lower, 'upper> for &'a T
+unsafe impl<'a, 'lower, Upper, T> ContravariantFamily<'lower, Upper> for &'a T
 where
-    T: ?Sized + ContravariantFamily<'lower, 'upper>,
-    for<'varying> <T as WithLifetime<'varying, 'lower, 'upper>>::Is: 'a,
+    Upper: ?Sized,
+    T: ?Sized + ContravariantFamily<'lower, Upper>,
+    for<'varying> <T as WithLifetime<'varying, 'lower, Upper>>::Is: 'a,
 {
     #[inline]
     fn contravariant_assertions() {
@@ -115,13 +118,13 @@ where
 
     #[inline]
     fn lengthen<'s, 'l>(
-        short: Varying<'s, 'lower, 'upper, Self>,
-    ) -> Varying<'l, 'lower, 'upper, Self>
+        short: Varying<'s, 'lower, Upper, Self>,
+    ) -> Varying<'l, 'lower, Upper, Self>
     where
-        'upper: 'l,
+        Upper: 'l,
         'l: 's,
         's: 'lower,
-        for<'varying> Varying<'varying, 'lower, 'upper, Self>: Sized,
+        for<'varying> Varying<'varying, 'lower, Upper, Self>: Sized,
     {
         #![expect(clippy::unnecessary_safety_comment, reason = "implementation safety of method")]
         // Implementation safety: this is just a contravariant cast with, possibly, some assertions.
@@ -133,14 +136,14 @@ where
 
     #[inline]
     fn lengthen_ref<'s, 'l, 'r>(
-        short: &'r Varying<'s, 'lower, 'upper, Self>,
-    ) -> &'r Varying<'l, 'lower, 'upper, Self>
+        short: &'r Varying<'s, 'lower, Upper, Self>,
+    ) -> &'r Varying<'l, 'lower, Upper, Self>
     where
-        'upper: 'l,
+        Upper: 'l,
         'l: 's,
         's: 'lower,
-        Varying<'l, 'lower, 'upper, Self>: 'r,
-        Varying<'s, 'lower, 'upper, Self>: 'r,
+        Varying<'l, 'lower, Upper, Self>: 'r,
+        Varying<'s, 'lower, Upper, Self>: 'r,
     {
         #![expect(clippy::unnecessary_safety_comment, reason = "implementation safety of method")]
         // Implementation safety: this is a contravariant cast with some assertions.
@@ -149,11 +152,12 @@ where
 
         Self::contravariant_assertions();
 
-        let src: &'r &'a Varying<'s, 'lower, 'upper, T> = short;
+        let src: &'r &'a Varying<'s, 'lower, Upper, T> = short;
         // SAFETY: we are lengthening the `'s` lifetime of `T<'s>` to `'l`, which is
-        // at most as long as `'upper`. We called `T::contravariant_assertions()` (within
-        // `Self::contravariant_assertions()`), so contravariantly casting `T<'varying>` is sound.
-        let dst: &'r &'a Varying<'l, 'lower, 'upper, T> = unsafe { transmute(src) };
+        // at most as long as any lifetime in `Upper`. We called `T::contravariant_assertions()`
+        // (within `Self::contravariant_assertions()`), so contravariantly casting `T<'varying>`
+        // is sound.
+        let dst: &'r &'a Varying<'l, 'lower, Upper, T> = unsafe { transmute(src) };
         dst
     }
 }
@@ -179,9 +183,10 @@ invariant_zst!(
     pub struct VaryingRef<T: ?Sized>;
 );
 
-impl<'varying, 'lower, 'upper, T> WithLifetime<'varying, 'lower, 'upper> for VaryingRef<T>
+impl<'varying, 'lower, Upper, T> WithLifetime<'varying, 'lower, Upper> for VaryingRef<T>
 where
-    T: ?Sized + WithLifetime<'varying, 'lower, 'upper>,
+    Upper: ?Sized,
+    T: ?Sized + WithLifetime<'varying, 'lower, Upper>,
     T::Is: 'varying,
 {
     type Is = &'varying T::Is;
@@ -197,10 +202,11 @@ where
 //
 // - No assertions are included other than those in `Self::covariant_assertions()`.
 // - The implementation safety requirements of `shorten` and `shorten_ref` are met.
-unsafe impl<'lower, 'upper, T> CovariantFamily<'lower, 'upper> for VaryingRef<T>
+unsafe impl<'lower, Upper, T> CovariantFamily<'lower, Upper> for VaryingRef<T>
 where
-    T: ?Sized + CovariantFamily<'lower, 'upper>,
-    for<'varying> <T as WithLifetime<'varying, 'lower, 'upper>>::Is: 'varying,
+    Upper: ?Sized,
+    T: ?Sized + CovariantFamily<'lower, Upper>,
+    for<'varying> <T as WithLifetime<'varying, 'lower, Upper>>::Is: 'varying,
 {
     #[inline]
     fn covariant_assertions() {
@@ -209,13 +215,13 @@ where
 
     #[inline]
     fn shorten<'l, 's>(
-        long: Varying<'l, 'lower, 'upper, Self>,
-    ) -> Varying<'s, 'lower, 'upper, Self>
+        long: Varying<'l, 'lower, Upper, Self>,
+    ) -> Varying<'s, 'lower, Upper, Self>
     where
-        'upper: 'l,
+        Upper: 'l,
         'l: 's,
         's: 'lower,
-        for<'varying> Varying<'varying, 'lower, 'upper, Self>: Sized,
+        for<'varying> Varying<'varying, 'lower, Upper, Self>: Sized,
     {
         #![expect(clippy::unnecessary_safety_comment, reason = "implementation safety of method")]
         // Implementation safety: this is just a covariant cast with, possibly, some assertions.
@@ -227,14 +233,14 @@ where
 
     #[inline]
     fn shorten_ref<'l, 's, 'r>(
-        long: &'r Varying<'l, 'lower, 'upper, Self>,
-    ) -> &'r Varying<'s, 'lower, 'upper, Self>
+        long: &'r Varying<'l, 'lower, Upper, Self>,
+    ) -> &'r Varying<'s, 'lower, Upper, Self>
     where
-        'upper: 'l,
+        Upper: 'l,
         'l: 's,
         's: 'lower,
-        Varying<'l, 'lower, 'upper, Self>: 'r,
-        Varying<'s, 'lower, 'upper, Self>: 'r,
+        Varying<'l, 'lower, Upper, Self>: 'r,
+        Varying<'s, 'lower, Upper, Self>: 'r,
     {
         #![expect(clippy::unnecessary_safety_comment, reason = "implementation safety of method")]
         // Implementation safety: this is a covariant cast with some assertions.
@@ -243,12 +249,12 @@ where
 
         Self::covariant_assertions();
 
-        let src: &'r &'l Varying<'l, 'lower, 'upper, T> = long;
-        let src: &'r &'s Varying<'l, 'lower, 'upper, T> = src;
+        let src: &'r &'l Varying<'l, 'lower, Upper, T> = long;
+        let src: &'r &'s Varying<'l, 'lower, Upper, T> = src;
         // SAFETY: we are shortening the `'l` lifetime of `T<'l>` to `'s`, which is
         // at least as long as `'lower`. We called `T::covariant_assertions()` (within
         // `Self::covariant_assertions()`), so covariantly casting `T<'varying>` is sound.
-        let dst: &'r &'s Varying<'s, 'lower, 'upper, T> = unsafe { transmute(src) };
+        let dst: &'r &'s Varying<'s, 'lower, Upper, T> = unsafe { transmute(src) };
         dst
     }
 }
@@ -265,9 +271,10 @@ where
 // - `*const T<'varying>` is covariant over `'varying` if `T<'varying>` is covariant over it.
 // - `*const T<'varying>` is contravariant over it if `T<'varying>` is contravariant over it.
 
-impl<'varying, 'lower, 'upper, T> WithLifetime<'varying, 'lower, 'upper> for *const T
+impl<'varying, 'lower, Upper, T> WithLifetime<'varying, 'lower, Upper> for *const T
 where
-    T: ?Sized + WithLifetime<'varying, 'lower, 'upper>,
+    Upper: ?Sized,
+    T: ?Sized + WithLifetime<'varying, 'lower, Upper>,
 {
     type Is = *const T::Is;
 }
@@ -282,9 +289,10 @@ where
 //
 // - No assertions are included other than those in `Self::covariant_assertions()`.
 // - The implementation safety requirements of `shorten` and `shorten_ref` are met.
-unsafe impl<'lower, 'upper, T> CovariantFamily<'lower, 'upper> for *const T
+unsafe impl<'lower, Upper, T> CovariantFamily<'lower, Upper> for *const T
 where
-    T: ?Sized + CovariantFamily<'lower, 'upper>,
+    Upper: ?Sized,
+    T: ?Sized + CovariantFamily<'lower, Upper>,
 {
     #[inline]
     fn covariant_assertions() {
@@ -293,9 +301,9 @@ where
 
     /// Shorten the `'varying` lifetime of `*const T<'varying>`.
     ///
-    /// If the given pointer points to a valid value of type `Varying<'l, 'lower, 'upper, T>`
+    /// If the given pointer points to a valid value of type `Varying<'l, 'lower, Upper, T>`
     /// (also referred to as `T<'l>`), the returned pointer (which is the given pointer with a
-    /// casted type) points to a valid value of type `Varying<'s, 'lower, 'upper, T>`
+    /// casted type) points to a valid value of type `Varying<'s, 'lower, Upper, T>`
     /// (also referred to as `T<'s>`).
     ///
     /// As the returned pointer is not modified (other than to change its type), any other
@@ -304,13 +312,13 @@ where
     ///
     /// `unsafe` code can rely on this guarantee.
     fn shorten<'l, 's>(
-        long: Varying<'l, 'lower, 'upper, Self>,
-    ) -> Varying<'s, 'lower, 'upper, Self>
+        long: Varying<'l, 'lower, Upper, Self>,
+    ) -> Varying<'s, 'lower, Upper, Self>
     where
-        'upper: 'l,
+        Upper: 'l,
         'l: 's,
         's: 'lower,
-        for<'varying> Varying<'varying, 'lower, 'upper, Self>: Sized,
+        for<'varying> Varying<'varying, 'lower, Upper, Self>: Sized,
     {
         #![expect(clippy::as_conversions, reason = "`.cast()` requires a `Sized` bound")]
 
@@ -320,18 +328,18 @@ where
         // call.
         Self::covariant_assertions();
 
-        let src: *const Varying<'l, 'lower, 'upper, T> = long;
+        let src: *const Varying<'l, 'lower, Upper, T> = long;
         // Correctness of guarantee: we are shortening the `'l` lifetime of `T<'l>` to `'s`, which
         // is at least as long as `'lower`. We called `T::covariant_assertions()` (within
         // `Self::covariant_assertions()`), so covariantly casting `T<'varying>` is sound.
-        src as *const Varying<'s, 'lower, 'upper, T>
+        src as *const Varying<'s, 'lower, Upper, T>
     }
 
     /// Shorten the `'varying` lifetime of `&(*const T<'varying>)`.
     ///
-    /// If the referenced pointer points to a valid value of type `Varying<'l, 'lower, 'upper, T>`
+    /// If the referenced pointer points to a valid value of type `Varying<'l, 'lower, Upper, T>`
     /// (also referred to as `T<'l>`), that pointer (whose reference is returned with a casted
-    /// type) also points to a valid value of type `Varying<'s, 'lower, 'upper, T>` (also referred
+    /// type) also points to a valid value of type `Varying<'s, 'lower, Upper, T>` (also referred
     /// to as `T<'s>`).
     ///
     /// As the returned reference to the pointer is not modified (other than to change the
@@ -340,14 +348,14 @@ where
     ///
     /// `unsafe` code can rely on this guarantee.
     fn shorten_ref<'l, 's, 'r>(
-        long: &'r Varying<'l, 'lower, 'upper, Self>,
-    ) -> &'r Varying<'s, 'lower, 'upper, Self>
+        long: &'r Varying<'l, 'lower, Upper, Self>,
+    ) -> &'r Varying<'s, 'lower, Upper, Self>
     where
-        'upper: 'l,
+        Upper: 'l,
         'l: 's,
         's: 'lower,
-        Varying<'l, 'lower, 'upper, Self>: 'r,
-        Varying<'s, 'lower, 'upper, Self>: 'r,
+        Varying<'l, 'lower, Upper, Self>: 'r,
+        Varying<'s, 'lower, Upper, Self>: 'r,
     {
         #![expect(clippy::unnecessary_safety_comment, reason = "implementation safety of method")]
         // Implementation safety: this is a covariant cast with some assertions.
@@ -356,11 +364,11 @@ where
 
         Self::covariant_assertions();
 
-        let src: &'r *const Varying<'l, 'lower, 'upper, T> = long;
+        let src: &'r *const Varying<'l, 'lower, Upper, T> = long;
         // SAFETY: we are shortening the `'l` lifetime of `T<'l>` to `'s`, which is
         // at least as long as `'lower`. We called `T::covariant_assertions()` (within
         // `Self::covariant_assertions()`), so covariantly casting `T<'varying>` is sound.
-        let dst: &'r *const Varying<'s, 'lower, 'upper, T> = unsafe { transmute(src) };
+        let dst: &'r *const Varying<'s, 'lower, Upper, T> = unsafe { transmute(src) };
         dst
     }
 }
@@ -375,9 +383,10 @@ where
 //
 // - No assertions are included other than those in `Self::contravariant_assertions()`.
 // - The implementation safety requirements of `lengthen` and `lengthen_ref` are met.
-unsafe impl<'lower, 'upper, T> ContravariantFamily<'lower, 'upper> for *const T
+unsafe impl<'lower, Upper, T> ContravariantFamily<'lower, Upper> for *const T
 where
-    T: ?Sized + ContravariantFamily<'lower, 'upper>,
+    Upper: ?Sized,
+    T: ?Sized + ContravariantFamily<'lower, Upper>,
 {
     #[inline]
     fn contravariant_assertions() {
@@ -386,9 +395,9 @@ where
 
     /// Lengthen the `'varying` lifetime of `*const T<'varying>`.
     ///
-    /// If the given pointer points to a valid value of type `Varying<'s, 'lower, 'upper, T>`
+    /// If the given pointer points to a valid value of type `Varying<'s, 'lower, Upper, T>`
     /// (also referred to as `T<'s>`), the returned pointer (which is the given pointer with a
-    /// casted type) points to a valid value of type `Varying<'l, 'lower, 'upper, T>`
+    /// casted type) points to a valid value of type `Varying<'l, 'lower, Upper, T>`
     /// (also referred to as `T<'l>`).
     ///
     /// As the returned pointer is not modified (other than to change its type), any other
@@ -398,13 +407,13 @@ where
     /// `unsafe` code can rely on this guarantee.
     #[inline]
     fn lengthen<'s, 'l>(
-        short: Varying<'s, 'lower, 'upper, Self>,
-    ) -> Varying<'l, 'lower, 'upper, Self>
+        short: Varying<'s, 'lower, Upper, Self>,
+    ) -> Varying<'l, 'lower, Upper, Self>
     where
-        'upper: 'l,
+        Upper: 'l,
         'l: 's,
         's: 'lower,
-        for<'varying> Varying<'varying, 'lower, 'upper, Self>: Sized,
+        for<'varying> Varying<'varying, 'lower, Upper, Self>: Sized,
     {
         #![expect(clippy::as_conversions, reason = "`.cast()` requires a `Sized` bound")]
 
@@ -414,18 +423,19 @@ where
         // call.
         Self::contravariant_assertions();
 
-        let src: *const Varying<'s, 'lower, 'upper, T> = short;
+        let src: *const Varying<'s, 'lower, Upper, T> = short;
         // Correctness of guarantee: we are lengthening the `'s` lifetime of `T<'s>` to `'l`, which
-        // is at most as long as `'upper`. We called `T::contravariant_assertions()` (within
-        // `Self::contravariant_assertions()`), so contravariantly casting `T<'varying>` is sound.
-        src as *const Varying<'l, 'lower, 'upper, T>
+        // is at most as long as any lifetime in `Upper`. We called `T::contravariant_assertions()`
+        // (within `Self::contravariant_assertions()`), so contravariantly casting `T<'varying>`
+        // is sound.
+        src as *const Varying<'l, 'lower, Upper, T>
     }
 
     /// Lenghten the `'varying` lifetime of `&(*const T<'varying>)`.
     ///
-    /// If the referenced pointer points to a valid value of type `Varying<'s, 'lower, 'upper, T>`
+    /// If the referenced pointer points to a valid value of type `Varying<'s, 'lower, Upper, T>`
     /// (also referred to as `T<'s>`), that pointer (whose reference is returned with a casted
-    /// type) also points to a valid value of type `Varying<'l, 'lower, 'upper, T>` (also referred
+    /// type) also points to a valid value of type `Varying<'l, 'lower, Upper, T>` (also referred
     /// to as `T<'l>`).
     ///
     /// As the returned reference to the pointer is not modified (other than to change the
@@ -435,14 +445,14 @@ where
     /// `unsafe` code can rely on this guarantee.
     #[inline]
     fn lengthen_ref<'s, 'l, 'r>(
-        short: &'r Varying<'s, 'lower, 'upper, Self>,
-    ) -> &'r Varying<'l, 'lower, 'upper, Self>
+        short: &'r Varying<'s, 'lower, Upper, Self>,
+    ) -> &'r Varying<'l, 'lower, Upper, Self>
     where
-        'upper: 'l,
+        Upper: 'l,
         'l: 's,
         's: 'lower,
-        Varying<'l, 'lower, 'upper, Self>: 'r,
-        Varying<'s, 'lower, 'upper, Self>: 'r,
+        Varying<'l, 'lower, Upper, Self>: 'r,
+        Varying<'s, 'lower, Upper, Self>: 'r,
     {
         #![expect(clippy::unnecessary_safety_comment, reason = "implementation safety of method")]
         // Implementation safety: this is a contravariant cast with some assertions.
@@ -451,11 +461,12 @@ where
 
         Self::contravariant_assertions();
 
-        let src: &'r *const Varying<'s, 'lower, 'upper, T> = short;
+        let src: &'r *const Varying<'s, 'lower, Upper, T> = short;
         // SAFETY: we are lengthening the `'s` lifetime of `T<'s>` to `'l`, which is
-        // at most as long as `'upper`. We called `T::contravariant_assertions()` (within
-        // `Self::contravariant_assertions()`), so contravariantly casting `T<'varying>` is sound.
-        let dst: &'r *const Varying<'l, 'lower, 'upper, T> = unsafe { transmute(src) };
+        // at most as long as any lifetime in `Upper`. We called `T::contravariant_assertions()`
+        // (within `Self::contravariant_assertions()`), so contravariantly casting `T<'varying>`
+        // is sound.
+        let dst: &'r *const Varying<'l, 'lower, Upper, T> = unsafe { transmute(src) };
         dst
     }
 }

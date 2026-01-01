@@ -75,20 +75,21 @@ The lifetime family traits do not require that the family be parameterized by al
 families like `&'varying &'a str` and `&'a &'varying str`; in such cases, `'varying` being either
 `'static` or arbitrarily short could be invalid.
 
-Each lifetime family comes with `'lower` and `'upper` bounds on how `'varying` is allowed to vary.
+Each lifetime family comes with `'lower` and `Upper` bounds on how `'varying` is allowed to vary.
 Those bounds are enforced through implied bounds, causing
 ```rust
-for<'varying> Varying<'varying, 'lower, 'upper, T>
+for<'varying> Varying<'varying, 'lower, Upper, T>
 ```
 to behave like
 ```rust
-for<'varying where 'upper: 'varying, 'varying: 'lower> Varying<'varying, 'lower, 'upper, T>
+for<'varying where Upper: 'varying, 'varying: 'lower> Varying<'varying, 'lower, Upper, T>
 ```
 
-Note that you may sometimes wish to require *no* upper bound or lower bound. `'static` is the
-maximally loose upper bound, but there is no special lifetime shorter than all other lifetimes;
-instead, `for<'lower> CovariantFamily<'lower, 'upper>` effectively removes the lower bound.
-(This, too, automagically acts like it had a `for<'lower where 'upper: 'lower>` binder.)
+Note that a consumer of a lifetime family may sometimes wish to require that the family has *no*
+upper bound or lower bound. Any `'static` type acts as a maximally loose upper bound, but there is
+no special lifetime shorter than all other lifetimes; instead,
+`for<'lower> CovariantFamily<'lower, Upper>` effectively removes the lower bound. (This, too,
+automagically acts like it had a `for<'lower where Upper: 'lower>` binder.)
 
 ## Caution for Implied Bounds
 
