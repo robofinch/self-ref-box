@@ -60,7 +60,7 @@ mod std_impls;
 
 
 pub use self::traits::{
-    BivariantFamily, ContravariantFamily, CovariantFamily, ImplyBound, LifetimeFamily,
+    ContravariantFamily, CovariantFamily, ImplyBound, LifetimeFamily, UnvaryingFamily,
     Varying, WithLifetime,
 };
 pub use self::main_const_impls::VaryingRef;

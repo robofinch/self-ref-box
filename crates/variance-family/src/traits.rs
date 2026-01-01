@@ -1,4 +1,10 @@
-trait Sealed {}
+/// A private trait for sealing `ImplyBound`.
+trait Sealed {
+    /// Ensure that `ImplyBound` is not `dyn`-compatible in order to head off any concerns about
+    /// interactions between higher-ranked `dyn` trait objects and implied bounds.
+    #[expect(dead_code, reason = "removes `dyn`-compatibility without requiring `Sized`")]
+    fn remove_dyn_compatibility() {}
+}
 
 /// Provide implied bounds for a `'varying` lifetime, bounding it between
 /// `'lower` and `'upper` lifetimes.
@@ -7,6 +13,9 @@ pub trait ImplyBound: Sealed {}
 
 impl<'varying> Sealed for (&'varying &'_ (), &'_ &'varying ()) {}
 impl<'varying> ImplyBound for (&'varying &'_ (), &'_ &'varying ()) {}
+
+/// An uninhabited type for sealing a `WithLifetime` method.
+enum PrivateSeal {}
 
 /// Apply a `'varying` lifetime to a family of types, and provide implied bounds that
 /// bound `'varying` between `'lower` and `'upper`.
@@ -59,6 +68,16 @@ pub trait WithLifetime<
     __ImplyBound: ImplyBound = (&'varying &'upper (), &'lower &'varying ()),
 > {
     type Is: ?Sized;
+
+    /// Ensure that `WithLifetime` and `LifetimeFamily` are not `dyn`-compatible in order
+    /// to head off any concerns about interactions between higher-ranked `dyn` trait objects
+    /// and implied bounds.
+    #[doc(hidden)]
+    #[expect(
+        private_interfaces,
+        reason = "seal this method; nobody should bother implementing it",
+    )]
+    fn remove_dyn_compatibility(_seal: PrivateSeal) {}
 }
 
 /// A slightly shorter and more legible alias for
@@ -85,108 +104,35 @@ where
     T: ?Sized + for<'varying> WithLifetime<'varying, 'lower, 'upper>,
 {}
 
-/// A "lifetime family" of types parameterized by a `'varying` lifetime such that the `'varying`
-/// parameter can soundly be transmuted to *any* lifetime between `'lower` and `'upper`.
+/// A trivial "lifetime family" of types parameterized by a `'varying` lifetime which don't
+/// actually use the `'varying` parameter.
 ///
-/// This is called bivariance: the ability to soundly perform either covariant or contravariant
-/// casts on the lifetime. (In Rust, bivariance of a type parameter allows a type to be coerced
-/// into any other type. For lifetimes, either `'a: 'b` or `'b: 'a` (or both), so covariance
-/// and contravariance should cover every case.)
+/// For any `'varying` lifetime between `'lower` and `'upper`, the type
+/// `Varying<'varying, 'lower, 'upper, Self>` is simply equal to `Self::WithAnyLifetime`.
 ///
-/// Trivial lifetime families which don't actually use the `'varying` parameter, such as `u32`,
-/// implement this trait. Other examples include `struct Foo<'varying>(&'varying ())`, where `Foo`
-/// unsafely promises not to attach any semantic importance to its `'varying` lifetime. (Otherwise,
-/// perhaps `Foo` could signify proof that you have access to some other data for at least
-/// lifetime `'varying`, or something, which would make bivariant casts potentially unsound.)
-///
-/// If you find any useful implementation of this trait which actually uses the `'varying`
-/// parameter, let us know! There doesn't seem to be any useful way to use a `'varying` lifetime
-/// which can be freely changed (for distinct `'lower` and `'upper`).
+/// All possible implementations of this trait are already provided.
 ///
 /// # Note on Lower Bound
 /// While the maximally loose `'upper` bound is `'static`, there's no special lifetime which
 /// serves as a lower bound for all other lifetimes. Instead,
-/// `for<'lower> BivariantFamily<'lower, 'upper>` uses a maximally loose lower bound (and
+/// `for<'lower> UnvaryingFamily<'lower, 'upper>` uses a maximally loose lower bound (and
 /// implied bounds ensure that this works regardless of what `'upper` is).
-///
-/// # Safety of Use
-/// In addition to all abilities provided by [`CovariantFamily`] and [`ContravariantFamily`],
-/// if `T<'varying>` implements [`BivariantFamily<'lower, 'upper>`] and neither
-/// [`CovariantFamily::covariant_assertions`] nor
-/// [`ContravariantFamily::contravariant_assertions`] panic, then bivariant casts of the
-/// `'varying` lifetime of `T<'varying>` can be performed (between `'lower` and `'upper`).
-///
-/// In particular, the `'varying` lifetime of `&'a mut T<'varying>` can be transmuted to any
-/// lifetime between `'lower` and `'upper`, and the same goes when `T<'varying>` is in other
-/// invariant positions.
-///
-/// # Safety of Implementation
-/// This trait is effectively an alias for `CovariantFamily + ContravariantFamily`; all possible
-/// implementations of this trait are already provided, and this itself trait is safe. Any
-/// soundness burden of this trait is the respondibility of the impls of `CovariantFamily` and
-/// `ContravariantFamily`.
-///
-/// # Further Details on Safety
-/// Regardless of the finer details of soundness below, `variance-family` only non-recursively
-/// implements both `CovariantFamily` and `ContravariantFamily` for lifetime families which leave
-/// `'varying` entirely unused, such as `str`. Therefore, if any unsoundness manages to result
-/// from a lifetime family that uses `'varying` (such as `Foo<'varying>(*mut &'varying ())`)
-/// deciding to implement both `CovariantFamily` and `ContravariantFamily`, it technically wouldn't
-/// be the fault of `variance-family`, except for reasoning in `variance-family` potentially
-/// misleading the author of the unsound code.
-///
-/// The additional concern on top of `CovariantFamily + ContravariantFamily` is whether
-/// `Invariant<T<'v1>>` can be soundly transmuted to `Invariant<T<'v2>>` where `Invariant<P>`
-/// is invariant over its parameter `P` and `T<'varying>` does not leave `'varying` entirely
-/// unused.
-///
-/// If a `T<'v2>` is read from an `Invariant<T<'v1>>` (via reading a `T<'v1>`) where `'v2: 'v1`,
-/// that's a contravariant cast of `T<'v1>`, which is acceptable. If `'v1: 'v2`, it's a
-/// covariant cast, which is also acceptable. If `Invariant<T<'v1>>` is instead used to write a
-/// value of type `T<'v2>` (via writing a `T<'v1>`), acting similarly to `fn(T<'v1>)` or
-/// `impl FnMut(T<'v1>) + 'a`, then the `T<'v2>` argument is effectively transmuted to `T<'v1>`
-/// when passed. If `'v2: 'v1`, that's a covariant cast of `T<'v2`, which is acceptable. If
-/// `'v1: 'v2`, it's a contravariant cast, which is also acceptable. Therefore, in all four
-/// relevant cases where `Invariant<T<'varying>>` is used to read or write a `T<'varying>`
-/// (possibly with a different lifetime), the cast should be sound solely based on the knowledge
-/// that covariant and contravariant casts are permissible.
-///
-/// Note that there is another important case besides reads and writes: some typestate-ish
-/// importance might be placed on the `'varying` lifetime. I'd argue that
-/// <https://github.com/rust-lang/rust/issues/97156> is a problem because the compiler did not
-/// respect invariance used for typestate; *even though* the relevant types are mutual subtypes
-/// and (as far as I know) `&'c mut for<'a> fn(&'a (), &'a ())` can be soundly transmuted to
-/// `&'c mut for<'a, 'b> fn(&'a (), &'b ())`, that does *not* mean that an *arbitrary other type*
-/// with `for<'a> fn(&'a (), &'a ())` as a generic parameter used in an invariant position would
-/// let that parameter be soundly changed.
-///
-/// Therefore, code transmuting `Invariant<T<'v1>>` to `Invariant<T<'v2>>` should be sound so
-/// long as `Invariant<P>` doesn't place typestate-ish importance on `P` (that signifies the state
-/// of data beyond `P` itself, which would be relevant to more than just reads and writes of
-/// type `P`). Note that transmuting a type parameter would, in general, be able to change trait
-/// implementations and associated types; meanwhile, a lifetime transmute can at best add or remove
-/// a `'static` bound, which may affect the presence or absence of a trait implementation, but would
-/// not be able to *change* between different trait implementations.
-///
-/// Additionally, nothing beyond `Invariant` should need to worry, because `BivariantFamily` isn't
-/// an autotrait or something that would look into private fields used for typestate and mess with
-/// them. As an example in the other direction, `&'a mut T` doesn't use `T` for typestate. Someone
-/// who hands out a `&'a mut T<'v1>` and writes some `unsafe` code that somehow manages to escalate
-/// potential existence of `&'a mut T<'v2>` into undefined behavior, perhaps with some sort of
-/// `InvariantFamily<'lower, 'upper>`, would be making delicate assumptions in their `unsafe` as
-/// well. Worst-case scenario, that code would be sound independently of and mutually incompatible
-/// with assumptions made by `variance-family`; since such a situation is still hypothetical,
-/// `BivariantFamily` and its safety comments seem sound, and no `unsafe` impls provided directly
-/// by `variance-family` actually toe the line, I am satisfied with the assumptions of unsafe code
-/// in `variance-family`.
-pub trait BivariantFamily<'lower, 'upper>:
-    CovariantFamily<'lower, 'upper> + ContravariantFamily<'lower, 'upper>
-{}
+pub trait UnvaryingFamily<'lower, 'upper>:
+    LifetimeFamily<'lower, 'upper>
+        + for<'varying> WithLifetime<'varying, 'lower, 'upper, Is = Self::WithAnyLifetime>
+{
+    type WithAnyLifetime: ?Sized;
+}
 
-impl<'lower, 'upper, T> BivariantFamily<'lower, 'upper> for T
+impl<'lower, 'upper, T, U> UnvaryingFamily<'lower, 'upper> for T
 where
-    T: ?Sized + CovariantFamily<'lower, 'upper> + ContravariantFamily<'lower, 'upper>,
-{}
+    T: ?Sized
+        + LifetimeFamily<'lower, 'upper>
+        + for<'varying> WithLifetime<'varying, 'lower, 'upper, Is = U>,
+    U: ?Sized,
+{
+    type WithAnyLifetime = U;
+}
 
 /// A "lifetime family" of types parameterized by a `'varying` lifetime such that performing
 /// covariant casts on the `'varying` lifetime is sound.
@@ -242,14 +188,6 @@ where
 /// - No assertions not included within `covariant_assertions` may be used.
 ///
 /// - The implementation safety requirements of `shorten` and `shorten_ref` must be met.
-///
-/// - Note that if this lifetime family implements both `CovariantFamily` and `ContravariantFamily`,
-///   then it will automatically implement [`BivariantFamily`] as well; it must be sound to
-///   transmute the `'varying` lifetime of `T<'varying>` even in an invariant position
-///   (provided that both `T::covariant_assertions` and `T::contravariant_assertions` do not
-///   panic when called). In particular, be *very* wary of implementing both `CovariantFamily` and
-///   `ContravariantFamily` for a type which uses `'varying` in some sort of typestate-ish way.
-///   See [`BivariantFamily`] for more.
 ///
 /// ## Precise Elaboration
 /// For any implementation of this type, it must be sound to cast the `'varying` lifetime of
@@ -475,14 +413,6 @@ pub unsafe trait CovariantFamily<'lower, 'upper>: LifetimeFamily<'lower, 'upper>
 /// - No assertions not included within `contravariant_assertions` may be used.
 ///
 /// - The implementation safety requirements of `lengthen` and `lengthen_ref` must be met.
-///
-/// - Note that if this lifetime family implements both `CovariantFamily` and `ContravariantFamily`,
-///   then it will automatically implement [`BivariantFamily`] as well; it must be sound to
-///   transmute the `'varying` lifetime of `T<'varying>` even in an invariant position
-///   (provided that both `T::covariant_assertions` and `T::contravariant_assertions` do not
-///   panic when called). In particular, be *very* wary of implementing both `CovariantFamily` and
-///   `ContravariantFamily` for a type which uses `'varying` in some sort of typestate-ish way.
-///   See [`BivariantFamily`] for more.
 ///
 /// ## Precise Elaboration
 /// For any implementation of this type, it must be sound to cast the `'varying` lifetime of

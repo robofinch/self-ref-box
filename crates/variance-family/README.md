@@ -20,25 +20,14 @@ lifetime. (Type parameters cannot easily be supported in a useful way without `f
 
 # Overview
 
-Using `CovariantFamily`, `ContravariantFamily`, and `BivariantFamily`, you can require that a
+Using `CovariantFamily`, `ContravariantFamily`, and `UnvaryingFamily`, you can require that a
 family of types parameterized by a `'varying` lifetime be effectively covariant over `'varying`,
-be effectively contravariant over `'varying`, or both (that is, allow for covariant casts
-and contravariant casts).
+be effectively contravariant over `'varying`, or leave `'varying` entirely unused.
 
-Any variance other than invariance is supported, since, as discussed, forcing invariance
-does not require a fancy trait. Moreover, bounding a generic parameter by "the compiler must
-indicate that this parameter is invariant" is akin to a `!Send` bound and is unlikely to provide
-any useful information. Covariance and contravariance give you additive abilities, similar to
-`Send` and `Sync`; the *presence* of a `Send` implementation implies that it's definitely sound to
-send a value of that type to a different thread, but the *absence* of a `Send` implementation does
-not guarantee that sending a value of the type to a different thread is necessarily unsound.
+Requiring invariance is not supported, since, as mentioned, forcing invariance does not require a
+fancy trait.
 
-Likewise, the lack of an implementation of `CovariantFamily` or `ContravariantFamily` (and even
-the compiler indicating that a type family is invariant over `'varying`) is insufficient to imply
-that `'varying` cannot soundly be covariantly or contravariantly changed in a `T<'varying>` lifetime
-family.
-
-### Definition of variance
+### Definition of Variance
 The qualifier "effectively" on variance is added in above descriptions of `CovariantFamily` and
 `ContravariantFamily` to emphasize that this crate deals with the *soundness* of changing a
 `'varying` lifetime, not with the variance assigned by the compiler. One may assume that
@@ -54,23 +43,15 @@ the *compiler* can prove covariance or contravariance over `'varying`. A type pa
 the type's interface remains sound when `'varying` is changed covariantly; such a type can soundly
 implement `CovariantFamily`.
 
-### Guarantees for `unsafe` code
+### Guarantees for `unsafe` Code
 
-The following guarantees may be assumed by unsafe code:
-- If a family of types implements `CovariantFamily` (or `ContravariantFamily`), then its `'varying`
-  lifetime may be soundly manipulated in a covariant (or contravariant) way via
-  `transmute` and similar means *so long as `covariant_assertions()` (or
-  `contravariant_assertions()`) is called on that family and does not panic*. The latter constraint
-  allows for post-monomorphization errors. Using the methods of `CovariantFamily`
-  (or `ContravariantFamily`) is unnecessary for `unsafe` code (though useful for safe code), and
-  merely serve as *proof* of covariance (or contravariance).
-- If a family of types implements `BivariantFamily`, then in addition to abilities provided by its
-  `CovariantFamily` and `ContravariantFamily` supertraits, the `'varying` lifetime of the family
-  may be soundly changed via `transmute` and similar means (even when the parameterized type
-  is in an invariant position, like `*mut T<'varying>`), so long as both `covariant_assertions()`
-  and `contravariant_assertions()` are called on that family and do not panic.
+If a family of types implements `CovariantFamily` (or `ContravariantFamily`), then its `'varying`
+lifetime may be soundly manipulated in a covariant (or contravariant) way via
+`transmute` and similar means *so long as `covariant_assertions()` (or
+`contravariant_assertions()`) is called on that family and does not panic*. The latter constraint
+allows for post-monomorphization errors.
 
-### Guarantees for safe code
+### Guarantees for Safe Code
 
 Using any safe means to change the `'varying` lifetime (including methods of `CovariantFamily`,
 methods of `ContravariantFamily`, and the compiler's provided coercions) does not require calling
@@ -78,37 +59,16 @@ methods of `ContravariantFamily`, and the compiler's provided coercions) does no
 place a safety requirement on safe code.) The assertion methods are only required for `unsafe`
 code.
 
-### Bivariance and Invariance
+### `UnvaryingFamily`
 
-Note that "bivariance" (at least in a type parameter) allows casts that are either covariant or
-contravariant, and "invariance" allows, at best, casts that are both covariant and contravariant.
-Usually, lifetime families that allow for bivariant casts of `'varying` do not actually care about
-the `'varying` lifetime at all (and likely do not use it whatsoever, as in the case of the `u32`
-lifetime family), while invariant casts are generally trivial and do not usually change anything.
+`UnvaryingFamily` ensures with the type system that implementors do not use the `'varying` lifetime
+whatsoever. Therefore, if you bound a generic `T<'varying>` lifetime family by `UnvaryingFamily`,
+it is extremely likely that the compiler will let you freely coerce `T<'v1>` into `T<'v2>`
+regardless of what the two lifetimes are. If implicit coercion does not work, `transmute` and
+similar means can soundly transmute `T<'v1>` into `T<'v2>` even in an invariant position, such
+as `*mut T<'varying>`.
 
-However, some pairs of types in Rust are considered distinct despite being mutual subtypes of
-each other, allowing for covariant and contravariant casts between the types in either direction;
-if invariance over a generic parameter still allows for that parameter to be cast in a way
-which is both covariant and contravariant, then such an invariant cast could actually change the
-type of the generic parameter. This lead to unsoundness in
-<https://github.com/rust-lang/rust/issues/97156>, where an invariant parameter is used for
-a typestate-like purpose. Therefore, invariant parameters in Rust cannot generally be changed to a
-non-equal type, even if the cast of the parameter would be both covariant and contravariant.
-
-It seems that so long as `Invariant<Bivariant<P>>` does not attach typestate-like significance to
-the precise type (or `TypeId`) of an invariant parameter `Bivariant<P>`, then changing `P` to `Q`
-in `Invariant<Bivariant<P>>` is sound as long as casting `Bivariant<P>` to `Bivariant<Q>` is both a
-covariant cast and a contravariant cast. The latter condition holds when `Bivariant<P>` is
-bivariant over its parameter `P`. This implies that `Invariant<Bivariant<P>>` is bivariant over
-`P` *provided that* `Invariant<_>` is not doing something interesting with typestate.
-
-Also, note that bivariance of a generic type parameter allows coercion of that parameter into any
-type, which could be considered to be *transitive* covariance + contravariance (assuming the
-existence of some uninhabited bottom type, similar to `!`, which can be cast into any other type).
-At least in the case of lifetimes, either `'a: 'b` or `'b: 'a` (or both), so so covariance and
-contravariance should cover every case.
-
-# Non-static data
+# Non-`'static` Data
 
 The lifetime family traits do not require that the family be parameterized by all possible lifetimes
 (including `'static` or arbitrarily short lifetimes), which would pose an issue for lifetime
@@ -130,22 +90,25 @@ maximally loose upper bound, but there is no special lifetime shorter than all o
 instead, `for<'lower> CovariantFamily<'lower, 'upper>` effectively removes the lower bound.
 (This, too, automagically acts like it had a `for<'lower where 'upper: 'lower>` binder.)
 
-Note that the usage of implied bounds in this crate should not come close to triggering the
-unsoundness shown in <https://github.com/rust-lang/rust/issues/25860>; this crate doesn't
-implement any of its traits for higher-ranked function pointers (or higher-ranked `dyn` trait
-objects).
-TODO: should `LifetimeFamily` be made non-dyn-compatible, in case `dyn LifetimeFamily<..>`
-could cause problems?
+## Caution for Implied Bounds
+
+Currently, in some situations involving higher-ranked function pointers, the compiler can neglect
+to enforce implied bounds, resulting in soundness. This known bug is tracked at
+<https://github.com/rust-lang/rust/issues/25860>. Higher-ranked `dyn` trait objects for impossible
+traits can also be created, as mentioned in <https://github.com/rust-lang/rust/issues/84533>.
+This crate does not implement any of its traits for higher-ranked types, and none of its
+traits are `dyn`-compatible; therefore, this crate itself should not come close to triggering
+the unsoundness. Nevertheless, for the sake of caution, it is worth keeping this potential risk in
+mind when working with higher-ranked types alongside this crate.
 
 # Custom implementations
 
-These types are not implemented exhaustively. In particular, this crate does not implement its
-traits for `dyn Trait + 'varying` or higher-ranked types with `for<'a>` binders. Moreover,
-third-party structs and enums cannot be covered by `CovariantFamily` and `ContravariantFamily`
-implementations here.
-
-In any case, when the families provided here do not suffice, you can create custom lifetime
-families over whatever types you wish.
+These types are not implemented exhaustively. In particular, third-party structs and enums
+cannot be covered by `CovariantFamily` and `ContravariantFamily` implementations here, and
+exhaustively implementing traits for types in `std` is not a goal of this crate. Instead,
+when the lifetime families provided here are not sufficient, utilities are provided for soundly
+creating custom lifetime families over whatever types you wish (including types not defined in
+the same crate as the custom lifetime family).
 
 TODO: (create and) discuss helper macros and composing lifetime families together
 
