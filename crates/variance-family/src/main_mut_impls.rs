@@ -357,7 +357,7 @@ where
         short
     }
 
-    /// Lenghten the `'varying` lifetime of `&(*const T<'varying>)`.
+    /// Lengthen the `'varying` lifetime of `&(*const T<'varying>)`.
     ///
     /// If the referenced pointer points to a valid value of type `Varying<'s, 'lower, Upper, T>`
     /// (also referred to as `T<'s>`), that pointer (whose reference is returned with a casted

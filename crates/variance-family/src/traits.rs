@@ -249,7 +249,7 @@ where
 /// struct CouldBeCovariant<'a>(&'a str, PhantomData<fn(&'a ()) -> &'a ()>);
 /// struct CouldBeCovariantFamily;
 ///
-/// impl<'varying> WithLifetime<'varying, '_, '_> for CouldBeCovariantFamily {
+/// impl<'varying, Upper: ?Sized> WithLifetime<'varying, '_, Upper> for CouldBeCovariantFamily {
 ///     type Is = CouldBeCovariant<'varying>;
 /// }
 ///
