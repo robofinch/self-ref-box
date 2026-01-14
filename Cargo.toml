@@ -12,12 +12,12 @@ repository   = "https://github.com/robofinch/self-ref-box"
 license      = "MIT OR Apache-2.0"
 
 [workspace.dependencies]
-self-ref-box    = { version = "0.1.0", path = "crates/self-ref-box"    }
-variance-family = { version = "0.1.0", path = "crates/variance-family" }
+self-ref-box    = { version = "0.1.0", path = "crates/self-ref-box",    default-features = false }
+variance-family = { version = "0.1.0", path = "crates/variance-family", default-features = false }
 
 
 # Out of the lints that do anything (non-deprecated clippy lints, non-migration rust lints),
-# AFAICT there are 35 left at the "allow" level :)
+# AFAICT there are 36 left at the "allow" level :)
 [workspace.lints.rust]
 # Note: I basically went through every allow-by-default lint, and am linting against
 # almost everything, except lints just related to migrating to Edition 2018, 2021, or 2024;
@@ -181,6 +181,8 @@ unwrap_in_result                    = "allow"
 
 # I find `if let` and `else` to look much better than `map_or_else`.
 option_if_let_else                  = "allow"
+# I prefer the redundant item-level pub(crate)'s, and unreachable impl-level pub's elsewhere.
+redundant_pub_crate                 = "allow"
 # Doesn't really help much, and `#[expect]`ing it is a hassle. Might be good to run the lint
 # once in a while, though.
 significant_drop_tightening         = "allow"

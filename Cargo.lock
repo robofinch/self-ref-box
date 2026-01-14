@@ -5,6 +5,9 @@ version = 4
 [[package]]
 name = "self-ref-box"
 version = "0.1.0"
+dependencies = [
+ "variance-family",
+]
 
 [[package]]
 name = "variance-family"

@@ -20,4 +20,8 @@ all-features = true
 
 
 [dependencies]
+variance-family.workspace = true
 
+[features]
+default = ["alloc"]
+alloc = []
