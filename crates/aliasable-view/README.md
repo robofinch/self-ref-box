@@ -2,7 +2,7 @@
 <h1> Aliasable View </h1>
 </div>
 
-[<img alt="github" src="https://img.shields.io/badge/github-aliasable--view-08f?logo=github" height="20">](https://github.com/robofinch/self-bind/)
+[<img alt="github" src="https://img.shields.io/badge/github-aliasable--view-08f?logo=github" height="20">](https://github.com/robofinch/attached-ref/)
 [![Latest version](https://img.shields.io/crates/v/aliasable-view.svg)](https://crates.io/cratesaliasable-view)
 [![Documentation](https://img.shields.io/docsrs/aliasable-view)](https://docs.rs/aliasable-view/0)
 [![Apache 2.0 or MIT license.](https://img.shields.io/badge/license-Apache--2.0_OR_MIT-blue.svg)](#license)

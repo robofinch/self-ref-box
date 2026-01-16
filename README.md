@@ -1,7 +1,7 @@
-# Self-Bind
+# Attached-Ref
 
-[![Latest version](https://img.shields.io/crates/v/self-bind.svg)](https://crates.io/crates/self-bind)
-[![Documentation](https://img.shields.io/docsrs/self-bind)](https://docs.rs/self-bind/0)
+[![Latest version](https://img.shields.io/crates/v/attached-ref.svg)](https://crates.io/crates/attached-ref)
+[![Documentation](https://img.shields.io/docsrs/attached-ref)](https://docs.rs/attached-ref/0)
 [![Apache 2.0 or MIT license.](https://img.shields.io/badge/license-Apache--2.0_OR_MIT-blue.svg)](#license)
 
 # Variance Family
@@ -19,3 +19,6 @@
 
 The goal is to make a "power-yoke"-like type; that is, `yoke::Yoke`, but maximally flexible
 (and more sound by virtue of not treating `&mut T` and `Box<T>` as aliasable).
+
+The main type has been renamed; eventually, once it's certain that it won't be renamed again,
+the repository will be renamed.

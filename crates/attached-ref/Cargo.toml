@@ -1,5 +1,5 @@
 [package]
-name         = "self-bind"
+name         = "attached-ref"
 authors      = ["Finley Huggins"]
 description  = "Flexible abstraction for mutable or immutable self-references to backing data in the same struct"
 readme       = "README.md"

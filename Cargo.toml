@@ -2,19 +2,19 @@
 resolver = "3"
 members = [
     "crates/aliasable-view",
-    "crates/self-bind",
+    "crates/attached-ref",
     "crates/variance-family"
 ]
 
 [workspace.package]
 edition      = "2024"
 rust-version = "1.85"
-repository   = "https://github.com/robofinch/self-bind"
+repository   = "https://github.com/robofinch/attached-ref"
 license      = "MIT OR Apache-2.0"
 
 [workspace.dependencies]
 aliasable-view  = { version = "0.1.0", path = "crates/aliasable-view",  default-features = false }
-self-bind       = { version = "0.1.0", path = "crates/self-bind",    default-features = false }
+attached-ref    = { version = "0.1.0", path = "crates/attached-ref",    default-features = false }
 variance-family = { version = "0.1.0", path = "crates/variance-family", default-features = false }
 
 either          = { version = "1.15.0", default-features = false }

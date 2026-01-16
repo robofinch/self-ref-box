@@ -1,8 +1,8 @@
 // See https://linebender.org/blog/doc-include for this README inclusion strategy
 // File links are not supported by rustdoc
 //!
-//! [LICENSE-APACHE]: https://github.com/robofinch/self-bind/blob/main/LICENSE-APACHE
-//! [LICENSE-MIT]: https://github.com/robofinch/self-bind/blob/main/LICENSE-MIT
+//! [LICENSE-APACHE]: https://github.com/robofinch/attached-ref/blob/main/LICENSE-APACHE
+//! [LICENSE-MIT]: https://github.com/robofinch/attached-ref/blob/main/LICENSE-MIT
 //!
 //!
 //! <style>
@@ -20,7 +20,7 @@ mod variance;
 mod uninhabited_ref;
 
 mod slot;
-mod self_bind_struct;
+mod attached_ref_slot;
 
 
 pub use self::{
