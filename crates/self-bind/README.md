@@ -1,18 +1,20 @@
 <div align="center" class="rustdoc-hidden">
-<h1> Self-Ref Box </h1>
+<h1> Self-Bind </h1>
 </div>
 
-[<img alt="github" src="https://img.shields.io/badge/github-self--ref--box-08f?logo=github" height="20">](https://github.com/robofinch/self-ref-box/)
-[![Latest version](https://img.shields.io/crates/v/self-ref-box.svg)](https://crates.io/crates/self-ref-box)
-[![Documentation](https://img.shields.io/docsrs/self-ref-box)](https://docs.rs/self-ref-box/0)
+[<img alt="github" src="https://img.shields.io/badge/github-self--bind-08f?logo=github" height="20">](https://github.com/robofinch/self-bind/)
+[![Latest version](https://img.shields.io/crates/v/self-bind.svg)](https://crates.io/crates/self-bind)
+[![Documentation](https://img.shields.io/docsrs/self-bind)](https://docs.rs/self-bind/0)
 [![Apache 2.0 or MIT license.](https://img.shields.io/badge/license-Apache--2.0_OR_MIT-blue.svg)](#license)
 
 # Overview
 
+TODO: this is very out-of-date
+
 The central `SelfRefBox` type is based on the following idea (setting aside finer details related to
 lifetimes, traits, and soundness):
 
-```rust
+```ignore
 struct SelfRefBox<T, S, E> {
     self_ref_slot: SelfRefSlot<S, E>,
     backing_data:  AliasableBox<T>,

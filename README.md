@@ -1,7 +1,7 @@
-# Self-Ref Box
+# Self-Bind
 
-[![Latest version](https://img.shields.io/crates/v/self-ref-box.svg)](https://crates.io/crates/self-ref-box)
-[![Documentation](https://img.shields.io/docsrs/self-ref-box)](https://docs.rs/self-ref-box/0)
+[![Latest version](https://img.shields.io/crates/v/self-bind.svg)](https://crates.io/crates/self-bind)
+[![Documentation](https://img.shields.io/docsrs/self-bind)](https://docs.rs/self-bind/0)
 [![Apache 2.0 or MIT license.](https://img.shields.io/badge/license-Apache--2.0_OR_MIT-blue.svg)](#license)
 
 # Variance Family
@@ -17,29 +17,5 @@
 
 # Overview
 
-The central `SelfRefBox` type is based on the following idea (setting aside finer details related to
-lifetimes, traits, and soundness):
-
-```rust
-struct SelfRefBox<T, S, E> {
-    self_ref_slot: SelfRefSlot<S, E>,
-    backing_data:  AliasableBox<T>,
-}
-
-enum SelfRefSlot<S, E> {
-    None,
-    /// Lifetime-erased self-reference produced from a `&T`
-    Shared(S),
-    /// Lifetime-erased self-reference produced from a `&mut T`
-    Exclusive(E),
-}
-```
-
-The type is designed for the self-reference to be frequently changed out and/or mutated, with
-access to the backing data provided to the greatest extent that is sound.
-
-See the [`self-ref-box` `README`](crates/self-ref-box/README.md) for more details.
-
-The [`variance-family` crate](crates/variance-family/README.md) was created to support this type,
-and may be more broadly useful for requiring that a lifetime is covariant, contravariant, or
-entirely unused in a family of types parameterized by a lifetime.
+The goal is to make a "power-yoke"-like type; that is, `yoke::Yoke`, but maximally flexible
+(and more sound by virtue of not treating `&mut T` and `Box<T>` as aliasable).

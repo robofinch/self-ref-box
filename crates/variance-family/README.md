@@ -2,7 +2,7 @@
 <h1> Variance Family </h1>
 </div>
 
-[<img alt="github" src="https://img.shields.io/badge/github-variance--family-08f?logo=github" height="20">](https://github.com/robofinch/self-ref-box/)
+[<img alt="github" src="https://img.shields.io/badge/github-variance--family-08f?logo=github" height="20">](https://github.com/robofinch/self-bind/)
 [![Latest version](https://img.shields.io/crates/v/variance-family.svg)](https://crates.io/crates/variance-family)
 [![Documentation](https://img.shields.io/docsrs/variance-family)](https://docs.rs/variance-family/0)
 [![Apache 2.0 or MIT license.](https://img.shields.io/badge/license-Apache--2.0_OR_MIT-blue.svg)](#license)
@@ -79,11 +79,11 @@ families like `&'varying &'a str` and `&'a &'varying str`; in such cases, `'vary
 
 Each lifetime family comes with `'lower` and `Upper` bounds on how `'varying` is allowed to vary.
 Those bounds are enforced through implied bounds, causing
-```rust
+```text
 for<'varying> Varying<'varying, 'lower, Upper, T>
 ```
 to behave like
-```rust
+```text
 for<'varying where Upper: 'varying, 'varying: 'lower> Varying<'varying, 'lower, Upper, T>
 ```
 

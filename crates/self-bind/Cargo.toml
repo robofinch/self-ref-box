@@ -1,7 +1,7 @@
 [package]
-name         = "self-ref-box"
+name         = "self-bind"
 authors      = ["Finley Huggins"]
-description  = "mutable or immutable self-references to boxed backing data of any lifetime"
+description  = "Flexible abstraction for mutable or immutable self-references to backing data in the same struct"
 readme       = "README.md"
 keywords     = ["self-referential", "lifetime", "reference"]
 categories   = ["memory-management", "data-structures", "no-std"]
