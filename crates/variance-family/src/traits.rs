@@ -90,8 +90,9 @@ pub type Varying<'varying, 'lower, Upper, T> = <T as WithLifetime<'varying, 'low
 
 /// A family of types which are parameterized by a `'varying` lifetime.
 ///
-/// In order to support non-`'static` references interacting with `'varying` in complicated ways,
-/// lower and upper bounds are placed on the possible lifetimes that `'varying` may be.
+/// In order to support non-`'static` references interacting with `'varying` in complicated ways
+/// (which may require lifetime constraints for well-formedness), lower and upper bounds are placed
+/// on the possible lifetimes that `'varying` may be.
 ///
 /// You should ensure that users of your implementation can use weaker lifetime bounds. In
 /// particular, provide the strongest guarantees you can (implement `WithLifetime` with as many
@@ -155,6 +156,11 @@ where
 /// "the ability to soundly be covariantly casted" instead of the variance assigned by the compiler.
 ///
 /// # Note on Bounds
+/// `'lower` and `Upper` allow for bounds on `'varying` to be expressed via implied bounds, which
+/// may be necessary for implementations to satisfy well-formedness constraints. For instance,
+/// the `&'varying &'a T` covariant family must have `'varying` be at most `'a`, and the
+/// `&'a &'varying T` covariant family must have `'varying` be at least `'a`.
+///
 /// If `Upper` has no lifetimes, the upper bound on `'varying` is `'static`. If `Upper` does
 /// contain lifetimes, the upper bound is the shortest lifetime in `Upper`.
 ///
@@ -390,6 +396,9 @@ pub unsafe trait CovariantFamily<'lower, Upper: ?Sized>: LifetimeFamily<'lower, 
 /// instead of the variance assigned by the compiler.
 ///
 /// # Note on Bounds
+/// `'lower` and `Upper` allow for bounds on `'varying` to be expressed via implied bounds, which
+/// may be necessary for implementations to satisfy well-formedness constraints.
+///
 /// If `Upper` has no lifetimes, the upper bound on `'varying` is `'static`. If `Upper` does
 /// contain lifetimes, the upper bound is the shortest lifetime in `Upper`.
 ///
@@ -546,3 +555,29 @@ pub unsafe trait ContravariantFamily<'lower, Upper: ?Sized>: LifetimeFamily<'low
         Varying<'s, 'lower, Upper, Self>: 'r,
         Varying<'l, 'lower, Upper, Self>: 'r;
 }
+
+/// A `LendFamily` is a family of `Sized` types which are parameterized by a `'varying` lifetime
+/// parameter which can be arbitrarily shortened via covariant casts.
+///
+/// All possible implementations of this trait are already provided.
+///
+/// # Note on Bounds
+/// `Upper` allows for an upper bound on `'varying` to be expressed via implied bounds, which
+/// may be necessary for implementations to satisfy well-formedness constraints. For instance,
+/// a `&'varying &'a T` lend family must have `'varying` be at most `'a`.
+///
+/// If `Upper` has no lifetimes, the upper bound on `'varying` is `'static`. If `Upper` does
+/// contain lifetimes, the upper bound is the shortest lifetime in `Upper`.
+pub trait LendFamily<Upper>
+where
+    Upper: ?Sized,
+    Self: for<'lower> CovariantFamily<'lower, Upper>
+        + for<'varying, 'lower> WithLifetime<'varying, 'lower, Upper, Is: Sized>,
+{}
+
+impl<Upper, T> LendFamily<Upper> for T
+where
+    Upper: ?Sized,
+    T: for<'lower> CovariantFamily<'lower, Upper>
+        + for<'varying, 'lower> WithLifetime<'varying, 'lower, Upper, Is: Sized>,
+{}

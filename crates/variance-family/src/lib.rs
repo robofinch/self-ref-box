@@ -1,3 +1,19 @@
+// See https://linebender.org/blog/doc-include for this README inclusion strategy
+// File links are not supported by rustdoc
+//!
+//! [LICENSE-APACHE]: https://github.com/robofinch/self-ref-box/blob/main/LICENSE-APACHE
+//! [LICENSE-MIT]: https://github.com/robofinch/self-ref-box/blob/main/LICENSE-MIT
+//!
+//! [`CovariantFamily`]: CovariantFamily
+//! [`ContravariantFamily`]: ContravariantFamily
+//! [`UnvaryingFamily`]: UnvaryingFamily
+//! [`LendFamily`]: LendFamily
+//!
+//! <style>
+//! .rustdoc-hidden { display: none; }
+//! </style>
+#![cfg_attr(doc, doc = include_str!("../README.md"))]
+
 #![no_std]
 #![expect(unsafe_code, reason = "allow unsafe code to rely on the marker trait impls")]
 
@@ -60,8 +76,8 @@ mod std_impls;
 
 
 pub use self::traits::{
-    ContravariantFamily, CovariantFamily, ImplyBound, LifetimeFamily, UnvaryingFamily,
-    Varying, WithLifetime,
+    ContravariantFamily, CovariantFamily, ImplyBound, LendFamily, LifetimeFamily,
+    UnvaryingFamily, Varying, WithLifetime,
 };
 pub use self::main_const_impls::VaryingRef;
 pub use self::main_mut_impls::VaryingRefMut;

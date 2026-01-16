@@ -2,7 +2,7 @@
 <h1> Variance Family </h1>
 </div>
 
-[<img alt="github" src="https://img.shields.io/badge/github-variance--family-08f?logo=github" height="20">](https://github.com/robofinch/variance-family/)
+[<img alt="github" src="https://img.shields.io/badge/github-variance--family-08f?logo=github" height="20">](https://github.com/robofinch/self-ref-box/)
 [![Latest version](https://img.shields.io/crates/v/variance-family.svg)](https://crates.io/crates/variance-family)
 [![Documentation](https://img.shields.io/docsrs/variance-family)](https://docs.rs/variance-family/0)
 [![Apache 2.0 or MIT license.](https://img.shields.io/badge/license-Apache--2.0_OR_MIT-blue.svg)](#license)
@@ -20,12 +20,14 @@ lifetime. (Type parameters cannot easily be supported in a useful way without `f
 
 # Overview
 
-Using `CovariantFamily`, `ContravariantFamily`, and `UnvaryingFamily`, you can require that a
+Using [`CovariantFamily`], [`ContravariantFamily`], and [`UnvaryingFamily`], you can require that a
 family of types parameterized by a `'varying` lifetime be effectively covariant over `'varying`,
 be effectively contravariant over `'varying`, or leave `'varying` entirely unused.
 
 Requiring invariance is not supported, since, as mentioned, forcing invariance does not require a
 fancy trait.
+
+[`LendFamily`] is provided as a de-facto trait alias for a common sort of [`CovariantFamily`].
 
 ### Definition of Variance
 The qualifier "effectively" on variance is added in above descriptions of `CovariantFamily` and
@@ -45,8 +47,8 @@ implement `CovariantFamily`.
 
 ### Guarantees for `unsafe` Code
 
-If a family of types implements `CovariantFamily` (or `ContravariantFamily`), then its `'varying`
-lifetime may be soundly manipulated in a covariant (or contravariant) way via
+If a family of types implements [`CovariantFamily`] (or [`ContravariantFamily`]), then its
+`'varying` lifetime may be soundly manipulated in a covariant (or contravariant) way via
 `transmute` and similar means *so long as `covariant_assertions()` (or
 `contravariant_assertions()`) is called on that family and does not panic*. The latter constraint
 allows for post-monomorphization errors.
@@ -61,12 +63,12 @@ code.
 
 ### `UnvaryingFamily`
 
-`UnvaryingFamily` ensures with the type system that implementors do not use the `'varying` lifetime
-whatsoever. Therefore, if you bound a generic `T<'varying>` lifetime family by `UnvaryingFamily`,
-it is extremely likely that the compiler will let you freely coerce `T<'v1>` into `T<'v2>`
-regardless of what the two lifetimes are. If implicit coercion does not work, `transmute` and
-similar means can soundly transmute `T<'v1>` into `T<'v2>` even in an invariant position, such
-as `*mut T<'varying>`.
+[`UnvaryingFamily`] ensures with the type system that implementors do not use the `'varying`
+lifetime whatsoever. Therefore, if you bound a generic `T<'varying>` lifetime family by
+`UnvaryingFamily`, it is extremely likely that the compiler will let you freely coerce `T<'v1>`
+into `T<'v2>` regardless of what the two lifetimes are. If implicit coercion does not work,
+`transmute` and similar means can soundly transmute `T<'v1>` into `T<'v2>` even in an invariant
+position, such as `*mut T<'varying>`.
 
 # Non-`'static` Data
 
@@ -128,3 +130,8 @@ any additional terms or conditions.
 
 [LICENSE-APACHE]: LICENSE-APACHE
 [LICENSE-MIT]: LICENSE-MIT
+
+[`CovariantFamily`]: https://docs.rs/variance-family/0/variance_family/trait.CovariantFamily.html
+[`ContravariantFamily`]: https://docs.rs/variance-family/0/variance_family/trait.ContravariantFamily.html
+[`UnvaryingFamily`]: https://docs.rs/variance-family/0/variance_family/trait.UnvaryingFamily.html
+[`LendFamily`]: https://docs.rs/variance-family/0/variance_family/trait.LendFamily.html
