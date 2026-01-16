@@ -5,11 +5,12 @@ mod layout_erase;
 mod heap_erase;
 
 
-use variance_family::{CovariantFamily, Varying};
+use variance_family::LendFamily;
 
 use crate::slot::SelfRefSlot;
 
 pub use self::lifetime_erase::LifetimeErase;
+
 
 /// A good default implementation for [`EraseSelfRef`].
 ///
@@ -38,10 +39,8 @@ pub type DefaultErase<N, S, E> = LifetimeErase<'static, N, S, E>;
 /// the methods are used in conjunction with each other.
 pub unsafe trait EraseSelfRef<N, S, E>
 where
-    S: for<'lower> CovariantFamily<'lower, Self::Upper>,
-    for<'lower, 'varying> Varying<'varying, 'lower, Self::Upper, S>: Sized,
-    E: for<'lower> CovariantFamily<'lower, Self::Upper>,
-    for<'lower, 'varying> Varying<'varying, 'lower, Self::Upper, E>: Sized,
+    S: LendFamily<Self::Upper>,
+    E: LendFamily<Self::Upper>,
 {
     /// An upper bound for `'varying` required of the `S` and `E` lifetime families.
     type Upper: ?Sized;

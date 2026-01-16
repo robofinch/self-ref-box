@@ -5,10 +5,8 @@ use variance_family::WithLifetime;
 
 pub enum SelfRefSlot<'varying, N, S, E, Upper>
 where
-    S: WithLifetime<'varying, 'varying, Upper>,
-    S::Is: Sized,
-    E: WithLifetime<'varying, 'varying, Upper>,
-    E::Is: Sized,
+    S: WithLifetime<'varying, 'varying, Upper, Is: Sized>,
+    E: WithLifetime<'varying, 'varying, Upper, Is: Sized>,
     Upper: ?Sized,
 {
     NoRef(N),
@@ -19,10 +17,8 @@ where
 impl<'varying, N, S, E, Upper> Clone for SelfRefSlot<'varying, N, S, E, Upper>
 where
     N: Clone,
-    S: WithLifetime<'varying, 'varying, Upper>,
-    S::Is: Clone,
-    E: WithLifetime<'varying, 'varying, Upper>,
-    E::Is: Clone,
+    S: WithLifetime<'varying, 'varying, Upper, Is: Clone>,
+    E: WithLifetime<'varying, 'varying, Upper, Is: Clone>,
     Upper: ?Sized,
 {
     fn clone(&self) -> Self {
@@ -37,20 +33,16 @@ where
 impl<'varying, N, S, E, Upper> Copy for SelfRefSlot<'varying, N, S, E, Upper>
 where
     N: Copy,
-    S: WithLifetime<'varying, 'varying, Upper>,
-    S::Is: Copy,
-    E: WithLifetime<'varying, 'varying, Upper>,
-    E::Is: Copy,
+    S: WithLifetime<'varying, 'varying, Upper, Is: Copy>,
+    E: WithLifetime<'varying, 'varying, Upper, Is: Copy>,
     Upper: ?Sized,
 {}
 
 impl<'varying, N, S, E, Upper> Debug for SelfRefSlot<'varying, N, S, E, Upper>
 where
     N: Debug,
-    S: WithLifetime<'varying, 'varying, Upper>,
-    S::Is: Sized + Debug,
-    E: WithLifetime<'varying, 'varying, Upper>,
-    E::Is: Sized + Debug,
+    S: WithLifetime<'varying, 'varying, Upper, Is: Sized + Debug>,
+    E: WithLifetime<'varying, 'varying, Upper, Is: Sized + Debug>,
     Upper: ?Sized,
 {
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {

@@ -3,7 +3,7 @@ use core::{
     mem::{ManuallyDrop, MaybeUninit},
 };
 
-use variance_family::{CovariantFamily, Varying};
+use variance_family::{CovariantFamily, LendFamily, Varying};
 
 use crate::slot::SelfRefSlot;
 use super::EraseSelfRef;
@@ -11,10 +11,8 @@ use super::EraseSelfRef;
 
 pub struct LifetimeErase<'erased, N, S, E>
 where
-    S: for<'lower> CovariantFamily<'lower, &'erased ()>,
-    Varying<'erased, 'erased, &'erased (), S>: Sized,
-    E: for<'lower> CovariantFamily<'lower, &'erased ()>,
-    Varying<'erased, 'erased, &'erased (), E>: Sized,
+    S: LendFamily<&'erased ()>,
+    E: LendFamily<&'erased ()>,
 {
     /// # Safety Invariant
     /// For some `'varying` lifetime, the value in `maybe_dangling` must be initialized to a valid
@@ -137,10 +135,8 @@ where
 
 impl<'erased, N, S, E> Debug for LifetimeErase<'erased, N, S, E>
 where
-    S: for<'lower> CovariantFamily<'lower, &'erased ()>,
-    Varying<'erased, 'erased, &'erased (), S>: Sized,
-    E: for<'lower> CovariantFamily<'lower, &'erased ()>,
-    Varying<'erased, 'erased, &'erased (), E>: Sized,
+    S: LendFamily<&'erased ()>,
+    E: LendFamily<&'erased ()>,
 {
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
         // Debugging the inner value would require `unsafe`.
@@ -150,10 +146,8 @@ where
 
 impl<'erased, N, S, E> Drop for LifetimeErase<'erased, N, S, E>
 where
-    S: for<'lower> CovariantFamily<'lower, &'erased ()>,
-    Varying<'erased, 'erased, &'erased (), S>: Sized,
-    E: for<'lower> CovariantFamily<'lower, &'erased ()>,
-    Varying<'erased, 'erased, &'erased (), E>: Sized,
+    S: LendFamily<&'erased ()>,
+    E: LendFamily<&'erased ()>,
 {
     fn drop(&mut self) {
         let maybe_dangling = self.maybe_dangling.as_mut_ptr();
