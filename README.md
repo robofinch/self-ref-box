@@ -1,15 +1,18 @@
 # Self-Ref Box
 
-[<img alt="github" src="https://img.shields.io/badge/github-self--ref--box-08f?logo=github" height="20">](https://github.com/robofinch/self-ref-box/)
 [![Latest version](https://img.shields.io/crates/v/self-ref-box.svg)](https://crates.io/crates/self-ref-box)
 [![Documentation](https://img.shields.io/docsrs/self-ref-box)](https://docs.rs/self-ref-box/0)
 [![Apache 2.0 or MIT license.](https://img.shields.io/badge/license-Apache--2.0_OR_MIT-blue.svg)](#license)
 
 # Variance Family
 
-[<img alt="github" src="https://img.shields.io/badge/github-variance--family-08f?logo=github" height="20">](https://github.com/robofinch/variance-family/)
 [![Latest version](https://img.shields.io/crates/v/variance-family.svg)](https://crates.io/crates/variance-family)
 [![Documentation](https://img.shields.io/docsrs/variance-family)](https://docs.rs/variance-family/0)
+[![Apache 2.0 or MIT license.](https://img.shields.io/badge/license-Apache--2.0_OR_MIT-blue.svg)](#license)
+
+# Aliasable View
+[![Latest version](https://img.shields.io/crates/v/aliasable-view.svg)](https://crates.io/cratesaliasable-view)
+[![Documentation](https://img.shields.io/docsrs/aliasable-view)](https://docs.rs/aliasable-view/0)
 [![Apache 2.0 or MIT license.](https://img.shields.io/badge/license-Apache--2.0_OR_MIT-blue.svg)](#license)
 
 # Overview
